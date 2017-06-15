@@ -1,0 +1,39 @@
+# This file contains metadata for your plugin. Since 
+# version 2.0 of QGIS this is the proper way to supply 
+# information about a plugin. The old method of 
+# embedding metadata in __init__.py will 
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=StraboSpot
+qgisMinimumVersion=2.0
+description=Download and Upload Strabo data to and from QGIS. 
+version=0.1
+author=Emily Bunse - University of Kansas
+email=egbunse@gmail.com
+
+about=StraboSpot is a project comprised of a mobile application for collection of geologic data in the field and an online, graph database for data storage and sharing. This plug-in interacts with the online database through a series of REST commands (GET and POST) in order to download and upload a user's Strabo-generated data in GeoJson form for use in QGIS.
+
+tracker=https://github.com/StraboSpot/strabo-qgis-plugin/issues
+repository=https://github.com/StraboSpot/strabo-qgis-plugin
+# End of mandatory metadata
+
+# Recommended items:
+
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=
+
+homepage=
+category=Plugins
+icon=icon.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
