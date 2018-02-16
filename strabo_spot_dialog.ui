@@ -458,6 +458,12 @@
        <height>21</height>
       </rect>
      </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -470,20 +476,23 @@
     <widget class="QLabel" name="datasetNamelabel">
      <property name="geometry">
       <rect>
-       <x>100</x>
+       <x>90</x>
        <y>130</y>
        <width>291</width>
        <height>21</height>
       </rect>
      </property>
      <property name="sizePolicy">
-      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Ignored">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="layoutDirection">
+      <enum>Qt::LeftToRight</enum>
+     </property>
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
      </property>
     </widget>
     <widget class="QProgressBar" name="downloadprogressBar">
@@ -515,7 +524,7 @@
       </sizepolicy>
      </property>
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
      </property>
     </widget>
     <widget class="QLabel" name="imageprogLabel">
@@ -534,7 +543,7 @@
       </sizepolicy>
      </property>
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
      </property>
     </widget>
    </widget>
