@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>564</width>
-    <height>445</height>
+    <width>710</width>
+    <height>564</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
   <widget class="QLabel" name="websitelabel">
    <property name="geometry">
     <rect>
-     <x>400</x>
+     <x>550</x>
      <y>10</y>
      <width>151</width>
      <height>31</height>
@@ -44,10 +44,10 @@
   <widget class="QStackedWidget" name="stackedWidget">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>50</y>
-     <width>521</width>
-     <height>381</height>
+     <x>70</x>
+     <y>90</y>
+     <width>571</width>
+     <height>431</height>
     </rect>
    </property>
    <property name="focusPolicy">
@@ -60,7 +60,7 @@
     <widget class="QLabel" name="userNamelabel">
      <property name="geometry">
       <rect>
-       <x>50</x>
+       <x>80</x>
        <y>110</y>
        <width>91</width>
        <height>20</height>
@@ -78,7 +78,7 @@
     <widget class="QLineEdit" name="userlineEdit">
      <property name="geometry">
       <rect>
-       <x>170</x>
+       <x>200</x>
        <y>100</y>
        <width>301</width>
        <height>41</height>
@@ -93,8 +93,8 @@
     <widget class="QLabel" name="welcomelabel">
      <property name="geometry">
       <rect>
-       <x>140</x>
-       <y>30</y>
+       <x>170</x>
+       <y>20</y>
        <width>251</width>
        <height>41</height>
       </rect>
@@ -113,8 +113,8 @@
     <widget class="QLineEdit" name="passwordlineEdit">
      <property name="geometry">
       <rect>
-       <x>170</x>
-       <y>170</y>
+       <x>200</x>
+       <y>190</y>
        <width>301</width>
        <height>41</height>
       </rect>
@@ -131,8 +131,8 @@
     <widget class="QPushButton" name="loginpushButton">
      <property name="geometry">
       <rect>
-       <x>190</x>
-       <y>250</y>
+       <x>230</x>
+       <y>270</y>
        <width>111</width>
        <height>41</height>
       </rect>
@@ -149,8 +149,8 @@
     <widget class="QLabel" name="passlabel">
      <property name="geometry">
       <rect>
-       <x>50</x>
-       <y>180</y>
+       <x>80</x>
+       <y>200</y>
        <width>101</width>
        <height>21</height>
       </rect>
@@ -169,7 +169,7 @@
     <widget class="QRadioButton" name="downloadradioButton">
      <property name="geometry">
       <rect>
-       <x>90</x>
+       <x>130</x>
        <y>130</y>
        <width>331</width>
        <height>25</height>
@@ -181,13 +181,13 @@
       </font>
      </property>
      <property name="text">
-      <string>Download StraboSpot Dataset</string>
+      <string>Download StraboSpot Dataset(s)</string>
      </property>
     </widget>
     <widget class="QRadioButton" name="uploadradioButton">
      <property name="geometry">
       <rect>
-       <x>90</x>
+       <x>130</x>
        <y>210</y>
        <width>351</width>
        <height>25</height>
@@ -199,14 +199,14 @@
       </font>
      </property>
      <property name="text">
-      <string>Upload dataset to StraboSpot</string>
+      <string>Upload dataset(s) to StraboSpot</string>
      </property>
     </widget>
     <widget class="QLabel" name="chooselabel">
      <property name="geometry">
       <rect>
-       <x>60</x>
-       <y>60</y>
+       <x>90</x>
+       <y>50</y>
        <width>451</width>
        <height>21</height>
       </rect>
@@ -226,7 +226,7 @@
      <property name="geometry">
       <rect>
        <x>0</x>
-       <y>330</y>
+       <y>300</y>
        <width>121</width>
        <height>34</height>
       </rect>
@@ -240,7 +240,7 @@
     <widget class="QLabel" name="straboChooselabel">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>60</x>
        <y>20</y>
        <width>471</width>
        <height>31</height>
@@ -261,7 +261,7 @@
      <property name="geometry">
       <rect>
        <x>80</x>
-       <y>270</y>
+       <y>340</y>
        <width>112</width>
        <height>34</height>
       </rect>
@@ -273,8 +273,8 @@
     <widget class="QPushButton" name="toOptionspushButton">
      <property name="geometry">
       <rect>
-       <x>310</x>
-       <y>270</y>
+       <x>380</x>
+       <y>340</y>
        <width>112</width>
        <height>34</height>
       </rect>
@@ -289,7 +289,7 @@
        <x>20</x>
        <y>90</y>
        <width>221</width>
-       <height>171</height>
+       <height>241</height>
       </rect>
      </property>
      <property name="editTriggers">
@@ -299,18 +299,21 @@
     <widget class="QListWidget" name="datasetlistWidget">
      <property name="geometry">
       <rect>
-       <x>260</x>
+       <x>330</x>
        <y>90</y>
        <width>221</width>
-       <height>171</height>
+       <height>241</height>
       </rect>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::MultiSelection</enum>
      </property>
     </widget>
     <widget class="QPushButton" name="backto2pushButton">
      <property name="geometry">
       <rect>
        <x>0</x>
-       <y>330</y>
+       <y>390</y>
        <width>91</width>
        <height>34</height>
       </rect>
@@ -324,8 +327,8 @@
     <widget class="QLabel" name="importlabel">
      <property name="geometry">
       <rect>
-       <x>100</x>
-       <y>30</y>
+       <x>130</x>
+       <y>10</y>
        <width>311</width>
        <height>31</height>
       </rect>
@@ -344,8 +347,8 @@
     <widget class="QPushButton" name="browsepushButton">
      <property name="geometry">
       <rect>
-       <x>30</x>
-       <y>90</y>
+       <x>20</x>
+       <y>60</y>
        <width>141</width>
        <height>41</height>
       </rect>
@@ -362,8 +365,8 @@
     <widget class="QPushButton" name="importpushButton">
      <property name="geometry">
       <rect>
-       <x>190</x>
-       <y>270</y>
+       <x>460</x>
+       <y>390</y>
        <width>111</width>
        <height>41</height>
       </rect>
@@ -380,9 +383,9 @@
     <widget class="QLineEdit" name="dialogPathlineEdit">
      <property name="geometry">
       <rect>
-       <x>210</x>
-       <y>90</y>
-       <width>281</width>
+       <x>180</x>
+       <y>60</y>
+       <width>381</width>
        <height>41</height>
       </rect>
      </property>
@@ -392,54 +395,265 @@
       </font>
      </property>
     </widget>
-    <widget class="QRadioButton" name="jpegradioButton">
-     <property name="geometry">
-      <rect>
-       <x>40</x>
-       <y>160</y>
-       <width>451</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>10</pointsize>
-      </font>
-     </property>
-     <property name="text">
-      <string>Check to Download Images in .jpeg Format</string>
-     </property>
-    </widget>
-    <widget class="QRadioButton" name="tiffradioButton">
-     <property name="geometry">
-      <rect>
-       <x>40</x>
-       <y>220</y>
-       <width>411</width>
-       <height>31</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>10</pointsize>
-      </font>
-     </property>
-     <property name="text">
-      <string>Check to Download Images in .tiff Format</string>
-     </property>
-    </widget>
     <widget class="QPushButton" name="backtodatasetspushButton">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>330</y>
+       <x>0</x>
+       <y>390</y>
        <width>141</width>
-       <height>34</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="text">
       <string>Back to Datasets</string>
      </property>
+    </widget>
+    <widget class="QFrame" name="imageOptionsFrame">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>110</y>
+       <width>181</width>
+       <height>261</height>
+      </rect>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <property name="lineWidth">
+      <number>10</number>
+     </property>
+     <property name="midLineWidth">
+      <number>10</number>
+     </property>
+     <widget class="QRadioButton" name="jpegradioButton">
+      <property name="geometry">
+       <rect>
+        <x>50</x>
+        <y>110</y>
+        <width>91</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>.jpeg</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="tiffradioButton">
+      <property name="geometry">
+       <rect>
+        <x>50</x>
+        <y>160</y>
+        <width>71</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>.tiff</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="imageFormat">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>30</y>
+        <width>181</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Image Format&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;(optional)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QFrame" name="databaseOptionsFrame">
+     <property name="geometry">
+      <rect>
+       <x>220</x>
+       <y>110</y>
+       <width>341</width>
+       <height>261</height>
+      </rect>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <widget class="QLabel" name="databaseOpt">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>-10</y>
+        <width>231</width>
+        <height>61</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Database Type (optional)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="postGISButton">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>50</y>
+        <width>124</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="toolTip">
+       <string extracomment="Choosing this option requires user/password to be filled out below. A new PostGIS database will be created."/>
+      </property>
+      <property name="text">
+       <string>PostGIS</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="spatiaLiteButton">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>220</y>
+        <width>124</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>SpatiaLite</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="postgis_passBox_2">
+      <property name="geometry">
+       <rect>
+        <x>50</x>
+        <y>160</y>
+        <width>241</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="echoMode">
+       <enum>QLineEdit::Password</enum>
+      </property>
+     </widget>
+     <widget class="QLabel" name="postgis_userlbl_2">
+      <property name="geometry">
+       <rect>
+        <x>40</x>
+        <y>80</y>
+        <width>111</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>PostGIS User</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="postgis_passlbl_2">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>140</y>
+        <width>131</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>PostGIS Password</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="postgis_userBox_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>100</y>
+        <width>171</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+     </widget>
+     <widget class="QLabel" name="postgis_portlbl">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>80</y>
+        <width>101</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>PostGIS Port</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="postgis_portBox">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>100</y>
+        <width>113</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>5432</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="downloadProgress">
@@ -452,54 +666,52 @@
     <widget class="QLabel" name="downloadProgresslabel">
      <property name="geometry">
       <rect>
-       <x>0</x>
-       <y>80</y>
+       <x>40</x>
+       <y>60</y>
        <width>501</width>
-       <height>21</height>
+       <height>51</height>
       </rect>
      </property>
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="minimumSize">
+      <size>
+       <width>501</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
       </font>
      </property>
      <property name="text">
       <string/>
      </property>
-    </widget>
-    <widget class="QLabel" name="datasetNamelabel">
-     <property name="geometry">
-      <rect>
-       <x>90</x>
-       <y>130</y>
-       <width>291</width>
-       <height>21</height>
-      </rect>
+     <property name="textFormat">
+      <enum>Qt::AutoText</enum>
      </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Ignored">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
      </property>
-     <property name="layoutDirection">
-      <enum>Qt::LeftToRight</enum>
+     <property name="wordWrap">
+      <bool>true</bool>
      </property>
-     <property name="text">
-      <string/>
+     <property name="textInteractionFlags">
+      <set>Qt::NoTextInteraction</set>
      </property>
     </widget>
     <widget class="QProgressBar" name="downloadprogressBar">
      <property name="geometry">
       <rect>
-       <x>50</x>
-       <y>190</y>
+       <x>90</x>
+       <y>170</y>
        <width>411</width>
        <height>23</height>
       </rect>
@@ -511,8 +723,8 @@
     <widget class="QLabel" name="progBarLabel">
      <property name="geometry">
       <rect>
-       <x>50</x>
-       <y>240</y>
+       <x>90</x>
+       <y>220</y>
        <width>361</width>
        <height>21</height>
       </rect>
@@ -530,14 +742,14 @@
     <widget class="QLabel" name="imageprogLabel">
      <property name="geometry">
       <rect>
-       <x>80</x>
-       <y>280</y>
+       <x>90</x>
+       <y>260</y>
        <width>321</width>
        <height>21</height>
       </rect>
      </property>
      <property name="sizePolicy">
-      <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
@@ -547,14 +759,50 @@
      </property>
     </widget>
    </widget>
-   <widget class="QWidget" name="uploadDatasets">
+   <widget class="QWidget" name="uploadOptions">
+    <widget class="QRadioButton" name="create_new_upload">
+     <property name="geometry">
+      <rect>
+       <x>120</x>
+       <y>210</y>
+       <width>331</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Create New StraboSpot Dataset</string>
+     </property>
+    </widget>
+    <widget class="QRadioButton" name="overwrite_upload">
+     <property name="geometry">
+      <rect>
+       <x>120</x>
+       <y>130</y>
+       <width>361</width>
+       <height>25</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Update Existing StraboSpot Dataset</string>
+     </property>
+    </widget>
     <widget class="QLabel" name="uploadlabel">
      <property name="geometry">
       <rect>
-       <x>90</x>
+       <x>120</x>
        <y>40</y>
        <width>371</width>
-       <height>21</height>
+       <height>41</height>
       </rect>
      </property>
      <property name="font">
@@ -568,17 +816,124 @@
       <string>Upload Dataset(s) to StraboSpot</string>
      </property>
     </widget>
+   </widget>
+   <widget class="QWidget" name="uploadDatasets">
     <widget class="QPushButton" name="back2pushButton">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>330</y>
+       <y>380</y>
        <width>81</width>
        <height>34</height>
       </rect>
      </property>
      <property name="text">
       <string>Back</string>
+     </property>
+    </widget>
+    <widget class="QListWidget" name="qgislayers">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>90</y>
+       <width>256</width>
+       <height>192</height>
+      </rect>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::MultiSelection</enum>
+     </property>
+    </widget>
+    <widget class="QLabel" name="choose_layer_lbl">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>60</y>
+       <width>251</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>8</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>QGIS Layer(s) Available to Upload</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="upload_next_button">
+     <property name="geometry">
+      <rect>
+       <x>450</x>
+       <y>380</y>
+       <width>112</width>
+       <height>34</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Upload</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="confirm_items_lbl">
+     <property name="geometry">
+      <rect>
+       <x>300</x>
+       <y>60</y>
+       <width>251</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QListWidget" name="create_prj_widget">
+     <property name="geometry">
+      <rect>
+       <x>300</x>
+       <y>90</y>
+       <width>256</width>
+       <height>192</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="upload_confirm_lbl">
+     <property name="geometry">
+      <rect>
+       <x>109</x>
+       <y>10</y>
+       <width>351</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>TextLabel</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="choose_datasets_button">
+     <property name="geometry">
+      <rect>
+       <x>71</x>
+       <y>290</y>
+       <width>131</width>
+       <height>34</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Choose Layer(s)</string>
      </property>
     </widget>
    </widget>
