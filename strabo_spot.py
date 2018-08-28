@@ -35,10 +35,10 @@
  Function List (in class StraboSpot)
 
 """
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
-from PyQt4.QtSql import *
-from qgis.core import *
+from PyQt4.QtGui import QIcon, QAction, QFileDialog, QMessageBox
+from PyQt4.QtCore import QSettings, QTranslator, qVersion
+from PyQt4.QtSql import QSqlDatabase
+from qgis.core import QCoreApplication, QgsMessageLog, QgsVectorFileWriter, QgsVectorLayer, QgsMapLayerRegistry, QgsDataSourceURI, QgsCoordinateReferenceSystem
 from qgis.gui import QgsMessageBar
 import qgis.utils
 from pyspatialite import dbapi2 as db
