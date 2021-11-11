@@ -8,9 +8,9 @@
 
 [general]
 name=StraboSpot
-qgisMinimumVersion=2.0
+qgisMinimumVersion=3.0
 description=Download and Upload Strabo data to and from QGIS. 
-version=0.1
+version=0.2
 author=Emily Bunse - University of Kansas
 email=egbunse@gmail.com
 

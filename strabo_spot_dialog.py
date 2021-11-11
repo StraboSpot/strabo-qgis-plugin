@@ -23,12 +23,13 @@
 
 import os
 
-from PyQt4 import QtGui, uic
+from PyQt5 import QtWidgets, uic
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'strabo_spot_dialog.ui'))
 
-class StraboSpotDialog(QtGui.QDialog, FORM_CLASS):
+
+class StraboSpotDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         super(StraboSpotDialog, self).__init__(parent)

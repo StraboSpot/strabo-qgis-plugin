@@ -35,20 +35,32 @@
  Function List (in class StraboSpot)
 
 """
-from PyQt4.QtGui import QIcon, QAction, QFileDialog, QMessageBox
-from PyQt4.QtCore import QSettings, QTranslator, qVersion
-from PyQt4.QtSql import QSqlDatabase
-from qgis.core import QCoreApplication, QgsMessageLog, QgsVectorFileWriter, QgsVectorLayer, QgsMapLayerRegistry, QgsDataSourceURI, QgsCoordinateReferenceSystem
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QAction, QFileDialog, QMessageBox
+from PyQt5.QtCore import QCoreApplication, QSettings, QTranslator, qVersion
+from PyQt5.QtSql import QSqlDatabase
+from qgis.core import QgsMessageLog, QgsVectorFileWriter, QgsVectorLayer, QgsProject, QgsDataSourceUri, QgsCoordinateReferenceSystem, Qgis
 from qgis.gui import QgsMessageBar
 import qgis.utils
-from pyspatialite import dbapi2 as db
-from PyQt4 import QtCore
+
+# from pyspatialite import dbapi2 as db
+from qgis.utils import spatialite_connect
 
 # Initialize Qt resources from file resources.py
-import resources
+from . import resources
 # Import the code for the dialog
-from strabo_spot_dialog import StraboSpotDialog
-import os.path, requests, json, errno, datetime, shutil, piexif, math, psycopg2, numpy, time
+from .strabo_spot_dialog import StraboSpotDialog
+import os.path
+import requests
+import json
+import errno
+import datetime
+import shutil
+import piexif
+import math
+import psycopg2
+import numpy
+import time
 from requests.auth import HTTPBasicAuth
 from PIL import Image
 from PIL import ImageFile
@@ -56,14 +68,15 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from osgeo import gdal
 from tempfile import mkstemp, gettempdir
 
+
 class StraboSpot:
     """QGIS Plugin Implementation."""
-    #These are global variables
-    global username, password, projectid,  projectids, datasetids, projectname,\
+    # These are global variables
+    global username, password, projectid, projectids, datasetids, projectname,\
         requestImages, fileExte, chosendatasets, selDB,\
         upload_layer_list, sel_upload_method, temp_folder
-    username= None
-    password= None
+    username = None
+    password = None
     projectid = None
     projectids = []
     datasetids = []
@@ -72,7 +85,7 @@ class StraboSpot:
     fileExte = None
     chosendatasets = []
     selDB = None
-    #Upload vars
+    # Upload vars
     upload_layer_list = []
     sel_upload_method = None
     temp_folder = None
@@ -142,9 +155,12 @@ class StraboSpot:
         # Set up the Message Bar in QGIS for showing the user errors
         self.bar = QgsMessageBar()
 
-        #Set the website label options (user can go to StraboSpot site from plug-in)
+        # Set the website label options (user can go to StraboSpot site from plug-in)
         self.dlg.websitelabel.setText('<a href="https://strabospot.org">Visit StraboSpot</a>')
         self.dlg.websitelabel.setOpenExternalLinks(True)
+
+        # Create a QgsProject instance to manage layers
+        self._qgs_project = QgsProject()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -161,18 +177,17 @@ class StraboSpot:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('StraboSpot', message)
 
-
     def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+            self,
+            icon_path,
+            text,
+            callback,
+            enabled_flag=True,
+            add_to_menu=True,
+            add_to_toolbar=True,
+            status_tip=None,
+            whats_this=None,
+            parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -259,7 +274,7 @@ class StraboSpot:
         # Handles all the back buttons based on which part of the Stacked Widget displayed
         currentIndex = self.dlg.stackedWidget.currentIndex()
         if currentIndex == 1:
-            #Take the user back to login and clear the text boxes
+            # Take the user back to login and clear the text boxes
             self.dlg.stackedWidget.setCurrentIndex(0)
             self.dlg.userlineEdit.clear()
             self.dlg.passwordlineEdit.clear()
@@ -273,7 +288,7 @@ class StraboSpot:
         elif currentIndex == 3:
             # Take the user back to choosing project-->dataset to download
             self.dlg.stackedWidget.setCurrentIndex(2)
-        elif currentIndex ==4:
+        elif currentIndex == 4:
             # Take the user back to where they choose download or upload
             self.dlg.stackedWidget.setCurrentIndex(1)
 
@@ -287,8 +302,8 @@ class StraboSpot:
         url = 'https://strabospot.org/userAuthenticate'
         data = {'email': username, 'password': password}
         headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-        #Later on check for update of Requests library so verify=False can be taken out--
-        #--Need to figure out how to accept the StraboSpot SSL Certificate
+        # Later on check for update of Requests library so verify=False can be taken out--
+        # --Need to figure out how to accept the StraboSpot SSL Certificate
         r = requests.post(url, json=data, headers=headers, verify= False)
         code = r.status_code
         QgsMessageLog.logMessage('Login Status Code: ' + str(code))
@@ -296,7 +311,7 @@ class StraboSpot:
         if 400 <= code < 500:
             self.iface.messageBar().pushMessage("Error:", "Bad Response: check internet \
                                            connection or make sure to enter email AND \
-                                           password.", QgsMessageBar.CRITICAL, 10)
+                                           password.", Qgis.Critical, 10)
             username = None
             password = None
             return
@@ -304,13 +319,13 @@ class StraboSpot:
         response = r.json()
         valid = response['valid']
         QgsMessageLog.logMessage(str(response) + valid)
-        QgsMessageLog.logMessage('Response:' +  response["valid"])
+        QgsMessageLog.logMessage('Response:' + response["valid"])
         # Check the status code for success to move on
         if valid == 'true':
-            #If the user is logged-in hide the log in widget and show choose one
+            # If the user is logged-in hide the log in widget and show choose one
             self.dlg.stackedWidget.setCurrentIndex(1)
         elif valid == 'false':
-            self.iface.messageBar().pushMessage("Error:", "Login Failed. Try again.", QgsMessageBar.CRITICAL, 10)
+            self.iface.messageBar().pushMessage("Error:", "Login Failed. Try again.", Qgis.Critical, 10)
             username = None
             password = None
 
@@ -334,7 +349,7 @@ class StraboSpot:
         response = r.json()
         global projectids
         projectids = []
-        #Add project names to projectlistWidget
+        # Add project names to projectlistWidget
         for prj in response['projects']:
             if widget_name == "create_prj_widget":
                 self.dlg.create_prj_widget.addItem(prj['name'])
@@ -376,7 +391,7 @@ class StraboSpot:
     # Gets the StraboSpot unique identifer for the user-chosen dataset
     # This is needed later for the REST call for the full dataset GeoJSON
     def getdatasetid(self):
-        chosenid = self.dlg.datasetlistWidget.currentRow()  #gets the index, corresponds to the datasetids list
+        chosenid = self.dlg.datasetlistWidget.currentRow()  # gets the index, corresponds to the datasetids list
         global chosendatasets
         # Gather datasetname and datasetid into a tuple inside a list to be iterated in importSpots
         datasetname = self.dlg.datasetlistWidget.currentItem().text()
@@ -407,7 +422,7 @@ class StraboSpot:
         self.dlg.stackedWidget.setCurrentIndex(4)
         endMessage = ""
 
-        #Set up the folder where files and images will be saved
+        # Set up the folder where files and images will be saved
         prj_nospace = projectname.replace(' ', '')
         prj = prj_nospace.strip()
         directory = self.dlg.dialogPathlineEdit.text()
@@ -436,15 +451,15 @@ class StraboSpot:
         # GET the project info from StraboSpot and save
         url = 'https://strabospot.org/db/project/' + str(projectid)
         QgsMessageLog.logMessage(url)
-        r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False )
+        r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
         statuscode = r.status_code
         response = r.json()
         prj_json = response
         rawprojectfile = datafolder + "\\" + prj + "_" + str(projectid) + ".json"
-        if str(statuscode) == "200" and (not str(prj_json) == 'None'): #If project is successfully transferred from StraboSpot
+        if str(statuscode) == "200" and (not str(prj_json) == 'None'):  # If project is successfully transferred from StraboSpot
             with open(rawprojectfile, 'w') as savedproject:
                 json.dump(prj_json, savedproject)
-            #Check the project for Tags. Save any spotids to list.
+            # Check the project for Tags. Save any spotids to list.
             if 'tags' in prj_json:
                 prj_tags = prj_json['tags']
                 tag_spotids = []
@@ -489,18 +504,18 @@ class StraboSpot:
                 if db_exists is True:
                     endMessage += "-PostGIS Database, " + postDB + " created.\r\n"
 
-        #Iterate per dataset tuple (dataset's name and id)
+        # Iterate per dataset tuple (dataset's name and id)
         for chosen in chosendatasets:
             datasetname = chosen[0]
             datasetid = chosen[1]
             # GET the datasetspots information from StraboSpot
             url = 'https://strabospot.org/db/datasetspotsarc/' + str(datasetid)
             QgsMessageLog.logMessage(url)
-            r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False )
+            r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
             statuscode = r.status_code
             response = r.json()
 
-            if str(statuscode) == "200":  #If dataset is successfully transferred from StraboSpot
+            if str(statuscode) == "200":  # If dataset is successfully transferred from StraboSpot
                 # ADD LATER-- FOR EACH DATASET CHOSEN CREATE A "DATASET" FOLDER AND DO THE FOLLOWING
                 # Save the datasetspots response to datafolder
                 # This whole version of the dataset will be called upon during Upload
@@ -526,251 +541,251 @@ class StraboSpot:
                     statuscode = r.status_code
                     response = r.json()
                     if str(statuscode) == "200":  # If dataset is successfully transferred from StraboSpot
-                            if str(response)== 'None': # If dataset doesn't have that geometry keep checking
-                              continue
-                            parsed = response
-                            # Set Up and Advance to the Download Progress Widget
-                            fullDataset = parsed['features']
-                            imageCount = 0
-                            for spot in fullDataset:
-                                spotprop = spot['properties']
-                                if 'images' in spotprop:
-                                    imgJson = spotprop['images']
-                                    for img in imgJson:
-                                        imageCount +=1
-                            QgsMessageLog.logMessage('Images in dataset: ' + str(imageCount))   #Need to work on resizing
-                            downloadedimagescount = 0
-                            if requestImages is True:
-                                #self.dlg.progBarLabel.setText("Preparing to download " + datasetname + " and " + str(imageCount) + " images.") #Need to work on resizing
-                                progBarMax = imageCount + 3  # each downloaded image + (parsing GeoJSON, create layer, save layer(s) to db)
-                                self.dlg.downloadprogressBar.setMaximum(progBarMax)
-                                self.dlg.imageprogLabel.setText(
-                                    "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " downloaded.")
-                                imgFolder = str(datafolder) + "/" + datasetname + "_Images"
-                                try:
-                                    os.makedirs(imgFolder)
-                                except OSError as exception:
-                                    if exception.errno != errno.EEXIST:
-                                        raise
-                                    elif exception.errno == errno.EEXIST:  # If the folder does exist then store in project folder
-                                        imgFolder = datafolder
-                                #Initialize Json for making an images layer
-                                imagesJson = []
-                            else:
-                                progBarMax = 3 #parsing GeoJSON, create layer, save layer(s) to db (Perhaps this should be Spot#?)
-                                self.dlg.downloadprogressBar.setMaximum(progBarMax)
-                                #self.dlg.progBarLabel.setText("Downloading StraboSpot dataset: " + datasetname + "...")
+                        if str(response) == 'None':  # If dataset doesn't have that geometry keep checking
+                            continue
+                        parsed = response
+                        # Set Up and Advance to the Download Progress Widget
+                        fullDataset = parsed['features']
+                        imageCount = 0
+                        for spot in fullDataset:
+                            spotprop = spot['properties']
+                            if 'images' in spotprop:
+                                imgJson = spotprop['images']
+                                for img in imgJson:
+                                    imageCount += 1
+                        QgsMessageLog.logMessage('Images in dataset: ' + str(imageCount))  # Need to work on resizing
+                        downloadedimagescount = 0
+                        if requestImages is True:
+                            # self.dlg.progBarLabel.setText("Preparing to download " + datasetname + " and " + str(imageCount) + " images.") #Need to work on resizing
+                            progBarMax = imageCount + 3  # each downloaded image + (parsing GeoJSON, create layer, save layer(s) to db)
+                            self.dlg.downloadprogressBar.setMaximum(progBarMax)
+                            self.dlg.imageprogLabel.setText(
+                                "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " downloaded.")
+                            imgFolder = str(datafolder) + "/" + datasetname + "_Images"
+                            try:
+                                os.makedirs(imgFolder)
+                            except OSError as exception:
+                                if exception.errno != errno.EEXIST:
+                                    raise
+                                elif exception.errno == errno.EEXIST:  # If the folder does exist then store in project folder
+                                    imgFolder = datafolder
+                            # Initialize Json for making an images layer
+                            imagesJson = []
+                        else:
+                            progBarMax = 3  # parsing GeoJSON, create layer, save layer(s) to db (Perhaps this should be Spot#?)
+                            self.dlg.downloadprogressBar.setMaximum(progBarMax)
+                            #self.dlg.progBarLabel.setText("Downloading StraboSpot dataset: " + datasetname + "...")
 
-                            # Iterate Spots to reorganize nested arrays and download images
-                            newDatasetJson = []
-                            for spot in fullDataset:
-                                #Gather basic information on the Spot
-                                spotgeometry = spot['geometry']
-                                spotprop = spot['properties']
-                                spotID = spotprop['id']
-                                spotModTS = spotprop['modified_timestamp']
-                                spottime = spotprop['time']
-                                spotdate = spotprop['date']
-                                spotself = spotprop['self']
-                                newSpot = {}
-                                newSpot['type'] = 'Feature'
-                                newSpot['geometry'] = spotgeometry
-                                newSpot['properties'] = {'id': spotID, 'modified_timestamp' : spotModTS,
-                                                       'time' : spottime, 'date' : spotdate, 'self' : spotself}
-                                newDatasetJson.append(newSpot)
-                                #Check if the Spot is associated with any Tags from the project JSON
-                                if spotID in tag_spotids:
-                                    for tag in prj_tags:
-                                        if 'spots' in tag:
-                                            if spotID in tag['spots']:
-                                                QgsMessageLog.logMessage("Tag associated with spotID" + str(spotID))
-                                                newTag = {}
-                                                newTag['type'] = 'Feature'
-                                                newTag['geometry'] = spotgeometry
-                                                newTag['properties'] = {}
-                                                for key in tag:
-                                                    if not key =='spots':
-                                                        newfield = 'tag_'+ key  #To avoid table confusion
-                                                        newTag['properties'][newfield] = tag.get(key)
-                                                newDatasetJson.append(newTag)
-                                #Check for and add special features (nested JSON arrays)
-                                if 'orientation_data' in spotprop:
-                                    #Handle orientation data
-                                    ori_dataJson = spotprop['orientation_data']
-                                    for ori_data in ori_dataJson:   #Each set of measurements in the Orientation Data array
-                                        newOri = {}
-                                        newOri['type'] = 'Feature'
-                                        newOri['geometry'] = spotgeometry
-                                        newOri['properties'] = {}
-                                        for key in ori_data:
-                                            key = key + "_orientation_data"
-                                            newOri['properties'][key] = ori_data.get(key)
-                                        newOri['properties']['SpotID'] = spotID
-                                        newDatasetJson.append(newOri)
-                                if 'rock_unit' in spotprop:
-                                    #Handle rock unit data
-                                    rock_unitJson = spotprop['rock_unit']
-                                    newRockUnit = {}
-                                    newRockUnit['type'] = 'Feature'
-                                    newRockUnit['geometry'] = spotgeometry
-                                    newRockUnit['properties'] = {}
-                                    for key in rock_unitJson:
-                                        key = key + "_rock_unit"
-                                        newRockUnit['properties'][key] = rock_unitJson.get(key)
-                                    newRockUnit['properties']['SpotID'] = spotID
-                                    newDatasetJson.append(newRockUnit)
-                                if 'trace' in spotprop:
-                                    # Handle trace data
-                                    traceJson= spotprop['trace']
-                                    newTrace = {}
-                                    newTrace['type'] = 'Feature'
-                                    newTrace['geometry'] = spotgeometry
-                                    newTrace['properties'] = {}
-                                    for key in traceJson:
-                                        key = key + "_trace"
-                                        newTrace['properties'][key] = traceJson.get(key)
-                                    newTrace['properties']['SpotID'] = spotID
-                                    newDatasetJson.append(newTrace)
+                        # Iterate Spots to reorganize nested arrays and download images
+                        newDatasetJson = []
+                        for spot in fullDataset:
+                            # Gather basic information on the Spot
+                            spotgeometry = spot['geometry']
+                            spotprop = spot['properties']
+                            spotID = spotprop['id']
+                            spotModTS = spotprop['modified_timestamp']
+                            spottime = spotprop['time']
+                            spotdate = spotprop['date']
+                            spotself = spotprop['self']
+                            newSpot = {}
+                            newSpot['type'] = 'Feature'
+                            newSpot['geometry'] = spotgeometry
+                            newSpot['properties'] = {'id': spotID, 'modified_timestamp': spotModTS,
+                                                     'time': spottime, 'date': spotdate, 'self': spotself}
+                            newDatasetJson.append(newSpot)
+                            # Check if the Spot is associated with any Tags from the project JSON
+                            if spotID in tag_spotids:
+                                for tag in prj_tags:
+                                    if 'spots' in tag:
+                                        if spotID in tag['spots']:
+                                            QgsMessageLog.logMessage("Tag associated with spotID" + str(spotID))
+                                            newTag = {}
+                                            newTag['type'] = 'Feature'
+                                            newTag['geometry'] = spotgeometry
+                                            newTag['properties'] = {}
+                                            for key in tag:
+                                                if not key == 'spots':
+                                                    newfield = 'tag_' + key  # To avoid table confusion
+                                                    newTag['properties'][newfield] = tag.get(key)
+                                            newDatasetJson.append(newTag)
+                            # Check for and add special features (nested JSON arrays)
+                            if 'orientation_data' in spotprop:
+                                # Handle orientation data
+                                ori_dataJson = spotprop['orientation_data']
+                                for ori_data in ori_dataJson:  # Each set of measurements in the Orientation Data array
+                                    newOri = {}
+                                    newOri['type'] = 'Feature'
+                                    newOri['geometry'] = spotgeometry
+                                    newOri['properties'] = {}
+                                    for key in ori_data:
+                                        key = key + "_orientation_data"
+                                        newOri['properties'][key] = ori_data.get(key)
+                                    newOri['properties']['SpotID'] = spotID
+                                    newDatasetJson.append(newOri)
+                            if 'rock_unit' in spotprop:
+                                # Handle rock unit data
+                                rock_unitJson = spotprop['rock_unit']
+                                newRockUnit = {}
+                                newRockUnit['type'] = 'Feature'
+                                newRockUnit['geometry'] = spotgeometry
+                                newRockUnit['properties'] = {}
+                                for key in rock_unitJson:
+                                    key = key + "_rock_unit"
+                                    newRockUnit['properties'][key] = rock_unitJson.get(key)
+                                newRockUnit['properties']['SpotID'] = spotID
+                                newDatasetJson.append(newRockUnit)
+                            if 'trace' in spotprop:
+                                # Handle trace data
+                                traceJson = spotprop['trace']
+                                newTrace = {}
+                                newTrace['type'] = 'Feature'
+                                newTrace['geometry'] = spotgeometry
+                                newTrace['properties'] = {}
+                                for key in traceJson:
+                                    key = key + "_trace"
+                                    newTrace['properties'][key] = traceJson.get(key)
+                                newTrace['properties']['SpotID'] = spotID
+                                newDatasetJson.append(newTrace)
 
-                                if 'samples' in spotprop:
-                                    # Handle samples data
-                                    samplesJson = spotprop['samples']
-                                    for samples_data in samplesJson:
-                                        newSample = {}
-                                        newSample['type'] = 'Feature'
-                                        newSample['geometry'] = spotgeometry
-                                        newSample['properties'] = {}
-                                        for key in samples_data:
-                                            key = key + "_samples"
-                                            newSample['properties'][key] = samples_data.get(key)
-                                        newSample['properties']['SpotID'] = spotID
-                                        newDatasetJson.append(newSample)
+                            if 'samples' in spotprop:
+                                # Handle samples data
+                                samplesJson = spotprop['samples']
+                                for samples_data in samplesJson:
+                                    newSample = {}
+                                    newSample['type'] = 'Feature'
+                                    newSample['geometry'] = spotgeometry
+                                    newSample['properties'] = {}
+                                    for key in samples_data:
+                                        key = key + "_samples"
+                                        newSample['properties'][key] = samples_data.get(key)
+                                    newSample['properties']['SpotID'] = spotID
+                                    newDatasetJson.append(newSample)
 
-                                if '_3d_structures' in spotprop:
-                                    _3DJson = spotprop['3d_structures']
-                                    for _3d in _3DJson:
-                                        new3d = {}
-                                        new3d['type'] = 'Feature'
-                                        new3d['geometry'] = spotgeometry
-                                        new3d['properties'] = {}
-                                        for key in _3DJson:
-                                            key = key + "_3d_structures"
-                                            new3d['properties'][key] = _3d.get(key)
-                                        new3d['properties']['SpotID'] = spotID
-                                        newDatasetJson.append(new3d)
+                            if '_3d_structures' in spotprop:
+                                _3DJson = spotprop['3d_structures']
+                                for _3d in _3DJson:
+                                    new3d = {}
+                                    new3d['type'] = 'Feature'
+                                    new3d['geometry'] = spotgeometry
+                                    new3d['properties'] = {}
+                                    for key in _3DJson:
+                                        key = key + "_3d_structures"
+                                        new3d['properties'][key] = _3d.get(key)
+                                    new3d['properties']['SpotID'] = spotID
+                                    newDatasetJson.append(new3d)
 
-                                if 'other_features' in spotprop:
-                                    otherFeatJson = spotprop['other_features']
-                                    for otherFeat in otherFeatJson:
-                                        newOther = {}
-                                        newOther['type'] = 'Feature'
-                                        newOther['geometry'] = spotgeometry
-                                        newOther['properties'] = {}
-                                        for key in otherFeat:
-                                            key = key + "_other_features"
-                                            newOther['properties'][key] = otherFeat.get(key)
-                                        newOther['properties']['SpotID'] = spotID
-                                        newDatasetJson.append(otherFeat)
+                            if 'other_features' in spotprop:
+                                otherFeatJson = spotprop['other_features']
+                                for otherFeat in otherFeatJson:
+                                    newOther = {}
+                                    newOther['type'] = 'Feature'
+                                    newOther['geometry'] = spotgeometry
+                                    newOther['properties'] = {}
+                                    for key in otherFeat:
+                                        key = key + "_other_features"
+                                        newOther['properties'][key] = otherFeat.get(key)
+                                    newOther['properties']['SpotID'] = spotID
+                                    newDatasetJson.append(otherFeat)
 
-                                if 'images' in spotprop:
-                                    imgJson = spotprop['images']
-                                    for img in imgJson:
-                                        newImg = {}
-                                        newImg['type'] = 'Feature'
-                                        newImg['geometry'] = spotgeometry
-                                        newImg['properties'] = {}
-                                        for key in img:
-                                            key = key + "_images"
-                                            newImg['properties'][key ] = img.get(key)
-                                        newImg['properties']['SpotID'] = spotID
-                                        # Save the actual image to disk
-                                        imgURL = img.get('self')
-                                        imgID = img.get('id')
-                                        #QgsMessageLog.logMessage(imgURL)
-                                        #If the user requested images be downloaded, retrieve image from StraboSpot
-                                        if requestImages is True:
-                                            r = requests.get(imgURL, auth=HTTPBasicAuth(username, password), verify=False, stream=True)
-                                            statuscode = r.status_code
-                                            #QgsMessageLog.logMessage(imgURL + " accessed with status code " + str(statuscode))
-                                            #If the image was successfully retrieved from StraboSpot, save to file and geoTag
-                                            if str(statuscode) == '200' :
-                                                downloadedimagescount += 1
-                                                imgFile = imgFolder + "/" + str(imgID) + fileExte
-                                                with open(imgFile, 'wb') as f:
-                                                    r.raw.decode_content = True
-                                                    shutil.copyfileobj(r.raw, f)
-                                                if fileExte == ".jpeg":
-                                                    self.geotag_photos(spotgeometry, imgFile, geotype)
-                                            elif str(statuscode) == '404':
-                                                warningMsg = "Image with id: " + str(imgID) + " not downloaded. Click 'Ok' to continue downloading."
-                                                result = QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
-                                            self.dlg.downloadprogressBar.setValue(downloadedimagescount)
-                                            self.dlg.imageprogLabel.setText(
-                                                "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " successfully downloaded.")
-                                            newImg['properties']['path'] = imgFile
-                                            imagesJson.append(newImg)
-                                        newDatasetJson.append(newImg)
-                            #Convert to GeoJson Array
-                            fullJson = {'type': 'FeatureCollection',
-                                          'features': newDatasetJson}
-                            modifiedJson = json.dumps(fullJson)
-                            # Save newly organized GeoJson array to file
-                            modifiedFileName = datafolder + "\\" + datasetname + "_" + geotype + "_" + str(datasetid) +  ".geojson"
-                            modifiedFileName = str.replace(str(modifiedFileName), "\\", "/")
-                            modifiedJsonDict = json.loads(modifiedJson)
-                            QgsMessageLog.logMessage('Modifided Json file: ' + modifiedFileName)
-                            with open(modifiedFileName, 'w') as savemodJson:
-                                json.dump(modifiedJsonDict, savemodJson)
+                            if 'images' in spotprop:
+                                imgJson = spotprop['images']
+                                for img in imgJson:
+                                    newImg = {}
+                                    newImg['type'] = 'Feature'
+                                    newImg['geometry'] = spotgeometry
+                                    newImg['properties'] = {}
+                                    for key in img:
+                                        key = key + "_images"
+                                        newImg['properties'][key] = img.get(key)
+                                    newImg['properties']['SpotID'] = spotID
+                                    # Save the actual image to disk
+                                    imgURL = img.get('self')
+                                    imgID = img.get('id')
+                                    # QgsMessageLog.logMessage(imgURL)
+                                    # If the user requested images be downloaded, retrieve image from StraboSpot
+                                    if requestImages is True:
+                                        r = requests.get(imgURL, auth=HTTPBasicAuth(username, password), verify=False, stream=True)
+                                        statuscode = r.status_code
+                                        #QgsMessageLog.logMessage(imgURL + " accessed with status code " + str(statuscode))
+                                        # If the image was successfully retrieved from StraboSpot, save to file and geoTag
+                                        if str(statuscode) == '200':
+                                            downloadedimagescount += 1
+                                            imgFile = imgFolder + "/" + str(imgID) + fileExte
+                                            with open(imgFile, 'wb') as f:
+                                                r.raw.decode_content = True
+                                                shutil.copyfileobj(r.raw, f)
+                                            if fileExte == ".jpeg":
+                                                self.geotag_photos(spotgeometry, imgFile, geotype)
+                                        elif str(statuscode) == '404':
+                                            warningMsg = "Image with id: " + str(imgID) + " not downloaded. Click 'Ok' to continue downloading."
+                                            result = QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
+                                        self.dlg.downloadprogressBar.setValue(downloadedimagescount)
+                                        self.dlg.imageprogLabel.setText(
+                                            "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " successfully downloaded.")
+                                        newImg['properties']['path'] = imgFile
+                                        imagesJson.append(newImg)
+                                    newDatasetJson.append(newImg)
+                        # Convert to GeoJson Array
+                        fullJson = {'type': 'FeatureCollection',
+                                    'features': newDatasetJson}
+                        modifiedJson = json.dumps(fullJson)
+                        # Save newly organized GeoJson array to file
+                        modifiedFileName = datafolder + "\\" + datasetname + "_" + geotype + "_" + str(datasetid) + ".geojson"
+                        modifiedFileName = str.replace(str(modifiedFileName), "\\", "/")
+                        modifiedJsonDict = json.loads(modifiedJson)
+                        QgsMessageLog.logMessage('Modifided Json file: ' + modifiedFileName)
+                        with open(modifiedFileName, 'w') as savemodJson:
+                            json.dump(modifiedJsonDict, savemodJson)
 
-                            self.dlg.downloadprogressBar.setValue(downloadedimagescount + 1)
-                            self.dlg.progBarLabel.setText("Creating QGIS layer of name: " + datasetname + "...")
+                        self.dlg.downloadprogressBar.setValue(downloadedimagescount + 1)
+                        self.dlg.progBarLabel.setText("Creating QGIS layer of name: " + datasetname + "...")
 
-                            #Add the modified Json file as a QGIS Layer
-                            layername = datasetname + "_" + geotype
-                            newlayer = QgsVectorLayer(modifiedFileName, layername, "ogr")
-                            if not newlayer.isValid():
-                                QgsMessageLog.logMessage("Layer: " + layername + " is not valid...")
-                            else:
-                                QgsMapLayerRegistry.instance().addMapLayer(newlayer)
-                                # Try Adding the project info to the metadata for upload...
-                                self.dlg.downloadprogressBar.setValue(downloadedimagescount + 2)
-                                #Add to databases
-                                if selDB == "SpatiaLite":
-                                    self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
-                                    table_exists = self.create_spatialite_table(newlayer, newDatasetJson, geotype,SL_conn, SL_cur)
-                                    if table_exists is True:
-                                        endMessage += "-SpatiaLite table for " + newlayer.name() + " successfully created.\r\n"
-                                    else:
-                                        endMessage += "-Error creating SpatiaLite table, " + newlayer.name() + ", see Message Log for details."
+                        # Add the modified Json file as a QGIS Layer
+                        layername = datasetname + "_" + geotype
+                        newlayer = QgsVectorLayer(modifiedFileName, layername, "ogr")
+                        if not newlayer.isValid():
+                            QgsMessageLog.logMessage("Layer: " + layername + " is not valid...")
+                        else:
+                            self._qgs_project.addMapLayer(newlayer)
+                            # Try Adding the project info to the metadata for upload...
+                            self.dlg.downloadprogressBar.setValue(downloadedimagescount + 2)
+                            # Add to databases
+                            if selDB == "SpatiaLite":
+                                self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
+                                table_exists = self.create_spatialite_table(newlayer, newDatasetJson, geotype, SL_conn, SL_cur)
+                                if table_exists is True:
+                                    endMessage += "-SpatiaLite table for " + newlayer.name() + " successfully created.\r\n"
+                                else:
+                                    endMessage += "-Error creating SpatiaLite table, " + newlayer.name() + ", see Message Log for details."
 
-                                elif selDB == "PostGIS":
-                                    self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
-                                    endMessage += "-GeoJSON for " + datasetname + " " + geotype + " saved.\r\n"
-                                    resultBool = self.load_geojson_to_postgis(postDB, postGISUser, postGISPass, postGISport, modifiedFileName)
-                                    if resultBool is True:
-                                        endMessage += "-PostGIS table for " + datasetname + "_" + geotype + " saved in " + postDB + " database.\r\n"
-                                    if resultBool is False:
-                                        endMessage += "-Error creating PostGIS table for, " + datasetname + "_" + geotype + ", see Message Log for details."
+                            elif selDB == "PostGIS":
+                                self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
+                                endMessage += "-GeoJSON for " + datasetname + " " + geotype + " saved.\r\n"
+                                resultBool = self.load_geojson_to_postgis(postDB, postGISUser, postGISPass, postGISport, modifiedFileName)
+                                if resultBool is True:
+                                    endMessage += "-PostGIS table for " + datasetname + "_" + geotype + " saved in " + postDB + " database.\r\n"
+                                if resultBool is False:
+                                    endMessage += "-Error creating PostGIS table for, " + datasetname + "_" + geotype + ", see Message Log for details."
 
-                            if requestImages is True and (not imagesJson == []) :
-                                allImagesJson = {'type': 'FeatureCollection',
-                                              'features': imagesJson}
-                                fullimgJson = json.dumps(allImagesJson)
-                                imageLayer = datasetname + "_" + geotype + "_images"
-                                newimagelayer = QgsVectorLayer(fullimgJson, imageLayer, "ogr")
-                                '''The following line sets the HTML MapTip Display Text under Layer Properties-> Display tab
+                        if requestImages is True and (not imagesJson == []):
+                            allImagesJson = {'type': 'FeatureCollection',
+                                             'features': imagesJson}
+                            fullimgJson = json.dumps(allImagesJson)
+                            imageLayer = datasetname + "_" + geotype + "_images"
+                            newimagelayer = QgsVectorLayer(fullimgJson, imageLayer, "ogr")
+                            '''The following line sets the HTML MapTip Display Text under Layer Properties-> Display tab
                                 From pg. 299 QGIS Pyton Programming Cookbook and 
                                 https://gis.stackexchange.com/questions/123675/how-to-get-image-pop-ups-in-qgis
                                 But in QGIS 3.0 can use 'setMapTipTemplate' 
                                 Be sure in informational videos to tell user where to edit the HTML!'''
-                                newimagelayer.setDisplayField('<b> Image ID: </b> [% "id" %] <br> <img src ="[% "path" %]" width=400 height=400/>')
-                                if not newimagelayer.isValid():
-                                    QgsMessageLog.logMessage("Image layer is not valid...")
-                                else:
-                                    QgsMapLayerRegistry.instance().addMapLayer(newimagelayer)
+                            newimagelayer.setDisplayField('<b> Image ID: </b> [% "id" %] <br> <img src ="[% "path" %]" width=400 height=400/>')
+                            if not newimagelayer.isValid():
+                                QgsMessageLog.logMessage("Image layer is not valid...")
+                            else:
+                                self._qgs_project.addMapLayer(newimagelayer)
 
-                            if self.dlg.downloadprogressBar.value == self.dlg.downloadprogressBar.maximum:
-                                self.dlg.close()
+                        if self.dlg.downloadprogressBar.value == self.dlg.downloadprogressBar.maximum:
+                            self.dlg.close()
                 endMessage += "-StraboSpot Dataset, " + chosen[0] + ", successfully downloaded.\r\n"
 
             else:
@@ -779,9 +794,9 @@ class StraboSpot:
         if selDB == "SpatiaLite":
             SL_conn.commit()
             SL_conn.close()
-        #elif selDB == "PostGIS":
+        # elif selDB == "PostGIS":
 
-        #Notify user of what was downloaded and created
+        # Notify user of what was downloaded and created
         QMessageBox.information(None, "Download Complete", endMessage, QMessageBox.Ok)
 
     def setJpeg(self):
@@ -823,7 +838,7 @@ class StraboSpot:
         if exif_dict is not None:
             # Get the lat/long info
             if geoType == "point":
-                longitude= coordinates[0]
+                longitude = coordinates[0]
                 latitude = coordinates[1]
             # Can only store one lat/long pair to Exif, so pull the first set of coordinates
             if geoType == "line":
@@ -847,24 +862,24 @@ class StraboSpot:
             # Longitude
             temp_val = abs(longitude)
             long_deg = math.trunc(temp_val)
-            temp_val = ((temp_val - long_deg)*60)
+            temp_val = ((temp_val - long_deg) * 60)
             long_mins = math.trunc(temp_val)
-            temp_val= ((temp_val - long_mins)*60)
-            long_sec = math.trunc(temp_val*1000)
+            temp_val = ((temp_val - long_mins) * 60)
+            long_sec = math.trunc(temp_val * 1000)
 
-            QgsMessageLog.logMessage("Long DMS: " + str(long_deg)+ "," + str(long_mins) + "," + str(long_sec))
+            QgsMessageLog.logMessage("Long DMS: " + str(long_deg) + "," + str(long_mins) + "," + str(long_sec))
             # Latitude
             temp_val = abs(latitude)
             lat_deg = math.trunc(temp_val)
-            temp_val = ((temp_val - lat_deg)*60)
+            temp_val = ((temp_val - lat_deg) * 60)
             lat_mins = math.trunc(temp_val)
-            temp_val= ((temp_val - lat_mins)*60)
-            lat_sec = math.trunc(temp_val*1000)
+            temp_val = ((temp_val - lat_mins) * 60)
+            lat_sec = math.trunc(temp_val * 1000)
 
             QgsMessageLog.logMessage("Lat DMS: " + str(lat_deg) + "," + str(lat_mins) + "," + str(lat_sec))
-            #Save info to Exif
-            exif_dict['GPS'][piexif.GPSIFD.GPSLongitude] = [(int(long_deg),1), (int(long_mins),1), (long_sec,1000)]
-            exif_dict['GPS'][piexif.GPSIFD.GPSLatitude] = [(int(lat_deg),1), (int(lat_mins),1), (lat_sec,1000)]
+            # Save info to Exif
+            exif_dict['GPS'][piexif.GPSIFD.GPSLongitude] = [(int(long_deg), 1), (int(long_mins), 1), (long_sec, 1000)]
+            exif_dict['GPS'][piexif.GPSIFD.GPSLatitude] = [(int(lat_deg), 1), (int(lat_mins), 1), (lat_sec, 1000)]
             # Save edited Exif to Image
             exif_bytes = piexif.dump(exif_dict)
             savedImg.save(imageName, "jpeg", exif=exif_bytes)
@@ -875,14 +890,14 @@ class StraboSpot:
     def create_spatialite_db(self, folderpath, project_name):
         # Create/Connect to the database
         slDB = folderpath + "\\" + project_name + datetime.datetime.now().strftime("_%m-%d-%y") + ".sqlite"
-        dbconnection = db.connect(slDB)
-        uri = QgsDataSourceURI()
+        dbconnection = spatialite_connect(slDB)
+        uri = QgsDataSourceUri()
         uri.setDatabase(slDB)
         dbcursor = dbconnection.cursor()
         sqlstatement = "SELECT InitSpatialMetadata(1)"
         try:
             dbcursor.execute(sqlstatement)
-        except db.Error, exe_error:
+        except db.Error as exe_error:
             QgsMessageLog.logMessage("Error creating SpatiaLite Table: " + exe_error)
             return dbconnection, dbcursor, False
         dbconnection.commit()
@@ -907,12 +922,12 @@ class StraboSpot:
 
             fields.append(field.name() + " " + fieldtype)
         # https://www.gaia-gis.it/spatialite-2.4.0-4/splite-python.html
-        #Create the table using the list of fields and field types
+        # Create the table using the list of fields and field types
         sqlstatement = "CREATE TABLE IF NOT EXISTS " + layername + "(" + ",".join(fields) + ");"
         QgsMessageLog.logMessage(sqlstatement)
         try:
             dbcursor.execute(sqlstatement)
-        except db.Error, exe_error:
+        except db.Error as exe_error:
             QgsMessageLog.logMessage("Error creating SpatiaLite Table: " + exe_error)
             return False
 
@@ -923,12 +938,12 @@ class StraboSpot:
         else:
             tablegeo = geometrytype
 
-        #Add a column for the geometry- cannot be combined with create table sql above!
+        # Add a column for the geometry- cannot be combined with create table sql above!
         sqlstatement = "SELECT AddGeometryColumn('" + layername + "', 'geom', 4326," + "'" + tablegeo.capitalize() + "', 'XY');"
         QgsMessageLog.logMessage(sqlstatement)
         try:
             dbcursor.execute(sqlstatement)
-        except db.Error, exe_error:
+        except db.Error as exe_error:
             QgsMessageLog.logMessage("Error Adding Geometry Column to SpatiaLite Table: " + exe_error)
             return False
         dbconnection.commit()
@@ -955,7 +970,7 @@ class StraboSpot:
                 else:  # Everything else *should* be a string, so quote it
                     spotvals.append("'" + valuetoadd + "'")
             spotkeys.append('geom')
-            #Construct the geometry JSON object to add to the table... Be sure to test this with LineString and Polygon!!!!!!!!
+            # Construct the geometry JSON object to add to the table... Be sure to test this with LineString and Polygon!!!!!!!!
             strgeom = str(spotgeom['coordinates'])
             modgeom = '{"type": ' + '"' + tablegeo.capitalize() + '"' + \
                       ',"crs":{"type":"name","properties":{"name":"EPSG:4326"}},"coordinates":' + \
@@ -969,14 +984,14 @@ class StraboSpot:
             QgsMessageLog.logMessage(sqlstatement)
             try:
                 dbcursor.execute(sqlstatement)
-            except db.Error, exe_error:
+            except db.Error as exe_error:
                 QgsMessageLog.logMessage("Error populating SpatiaLite table: " + exe_error)
                 return False
 
             dbconnection.commit()
-            return True         #No errors detected, so table was successfully created
+            return True  # No errors detected, so table was successfully created
 
-    def create_postgres_db(self, db_name,postgis_user, postgis_pass, postgis_port):
+    def create_postgres_db(self, db_name, postgis_user, postgis_pass, postgis_port):
         # Following advice from Stackexchange question: https://stackoverflow.com/questions/19426448/creating-a-postgresql-db-using-psycopg2
         # https://stackoverflow.com/questions/34484066/create-a-postgres-database-using-python/34484185
         # https://hub.packtpub.com/moving-spatial-data-one-format-another/
@@ -986,13 +1001,13 @@ class StraboSpot:
         dbcur = dbconn.cursor()
         # Run SQL command to create a new db
         #sqlcmd = """CREATE DATABASE %s"""
-                    #"WITH OWNER = " + postgis_user + \
-                    # " ENCODING = 'UTF8' LC_COLLATE = 'English_United States.1252' LC_CTYPE = 'English_United States.1252'" + \
-                    #  " TABLESPACE = pg_default CONNECTION LIMIT = -1;"
+        # "WITH OWNER = " + postgis_user + \
+        # " ENCODING = 'UTF8' LC_COLLATE = 'English_United States.1252' LC_CTYPE = 'English_United States.1252'" + \
+        #  " TABLESPACE = pg_default CONNECTION LIMIT = -1;"
         dbcur.execute("CREATE DATABASE %s ;" % db_name)
         dbconn.commit()
         dbconn.close()
-        dbconn = psycopg2.connect(host='localhost', port=postgis_port, database=db_name.lower(), user=postgis_user,password=postgis_pass)
+        dbconn = psycopg2.connect(host='localhost', port=postgis_port, database=db_name.lower(), user=postgis_user, password=postgis_pass)
         dbcur = dbconn.cursor()
         dbcur.execute("CREATE EXTENSION postgis;")
         dbconn.commit()
@@ -1000,7 +1015,7 @@ class StraboSpot:
         # Add the PostgreSQL database connection to QGIS
         # pg. 91 "The PyGIS Programmer's Guide" By: Garry Sherman
         qgisConn = QSqlDatabase.addDatabase('QPSQL')
-        QgsMessageLog.logMessage("QPSQL db is value: "+ str(qgisConn.isValid()))
+        QgsMessageLog.logMessage("QPSQL db is value: " + str(qgisConn.isValid()))
         if qgisConn.isValid():
             qgisConn.setHostName('localhost')
             qgisConn.setDatabaseName(db_name.lower())
@@ -1010,8 +1025,8 @@ class StraboSpot:
             if qgisConn.open():
                 QgsMessageLog.logMessage("Successfully connected to PostGIS db: " + db_name.lower())
                 postgis_exists = True
-                #Add to canvas
-                qgisURI = QgsDataSourceURI()
+                # Add to canvas
+                qgisURI = QgsDataSourceUri()
                 qgisURI.setConnection('localhost', str(postgis_port), db_name.lower(), postgis_user, postgis_pass)
 
             else:
@@ -1021,52 +1036,52 @@ class StraboSpot:
         return dbconn, dbcur, postgis_exists
 
     def load_geojson_to_postgis(self, db_name, postgis_user, postgis_pass, postgis_port, json_file):
-        #ogr2ogr -f "PostgreSQL" PG:dbname=*postDB* user=postGISUser password=postGISPass" "FULL PATH LOCATION OF JSON FILE"
+        # ogr2ogr -f "PostgreSQL" PG:dbname=*postDB* user=postGISUser password=postGISPass" "FULL PATH LOCATION OF JSON FILE"
         gdal.UseExceptions()
-        pgconn = "PG:host=localhost port=" + str(postgis_port) + " user='"  + postgis_user + "' password='" + postgis_pass + "' dbname='" + db_name.lower() + "'"
+        pgconn = "PG:host=localhost port=" + str(postgis_port) + " user='" + postgis_user + "' password='" + postgis_pass + "' dbname='" + db_name.lower() + "'"
         # subprocess.call(["ogr2ogr", "-f", "PostgreSQL", pgconn, json_file])
         # Using VectorTranslate to load the geojson into the PostGIS table from this post:
         # https://svn.osgeo.org/gdal/trunk/autotest/utilities/test_ogr2ogr_lib.py
         result = gdal.VectorTranslate(pgconn, json_file, format='PostgreSQL')
-        #Check the result- http://svn.osgeo.org/gdal/trunk/autotest/utilities/test_ogr2ogr_lib.py
+        # Check the result- http://svn.osgeo.org/gdal/trunk/autotest/utilities/test_ogr2ogr_lib.py
         lyr = result.GetLayer(0)
         if lyr.GetFeatureCount() > 0:
             return True
         else:
             return False
 
-        #Might want to add the database connection to DB Manager- doesn't seem to be a good way of accomplishing this
-        #Possible leads: https://gis.stackexchange.com/questions/269412/qgis-splitvectorlayer-wrong-output-directory
-        #(Do the same thing they did for Processing Plug-In for the db_manager plug-in?? then use PostGisDBConnector?
-        #https://gis.stackexchange.com/questions/180427/retrieve-available-postgis-connections-in-pyqgis
-        #https://lists.osgeo.org/pipermail/qgis-developer/2015-October/040059.html
-        #Or manipulating the DB Manager through QSettings? http://pyqt.sourceforge.net/Docs/PyQt4/pyqt_qsettings.html
+        # Might want to add the database connection to DB Manager- doesn't seem to be a good way of accomplishing this
+        # Possible leads: https://gis.stackexchange.com/questions/269412/qgis-splitvectorlayer-wrong-output-directory
+        # (Do the same thing they did for Processing Plug-In for the db_manager plug-in?? then use PostGisDBConnector?
+        # https://gis.stackexchange.com/questions/180427/retrieve-available-postgis-connections-in-pyqgis
+        # https://lists.osgeo.org/pipermail/qgis-developer/2015-October/040059.html
+        # Or manipulating the DB Manager through QSettings? http://pyqt.sourceforge.net/Docs/PyQt4/pyqt_qsettings.html
 
     # Upload Functions
     def deployuploadGUI(self):
-        #If the user wants to upload a dataset, move to uploadDatasets GUI
-        #Add open QGIS layer names to the list box
+        # If the user wants to upload a dataset, move to uploadDatasets GUI
+        # Add open QGIS layer names to the list box
         if self.dlg.qgislayers.count() > 0:
             self.dlg.qgislayers.clear()
 
-        #Add current open layers to list of upload choices
-        if QgsMapLayerRegistry.instance().count() > 0:
+        # Add current open layers to list of upload choices
+        if self._qgs_project.count() > 0:
             sel_layers_tup = (self.iface.mapCanvas().layers())
-            #for layer in QgsMapLayerRegistry.instance().mapLayers().values():
-                #sel_layers_list.append(layer.name())
+            # for layer in QgsMapLayerRegistry.instance().mapLayers().values():
+            # sel_layers_list.append(layer.name())
         else:
             warningMsg = "No open layers detected. \r\n" \
                          "Please close the StraboSpot Plug-In, open the layers to upload, and try again. "
             QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
-        #To add the layers in the same order as they are in the table of contents
-        #sel_layers_list.reverse()
+        # To add the layers in the same order as they are in the table of contents
+        # sel_layers_list.reverse()
         for lyr in sel_layers_tup:
             self.dlg.qgislayers.addItem(lyr.name())
-        #Advance to the page for user interaction
+        # Advance to the page for user interaction
         self.dlg.stackedWidget.setCurrentIndex(5)
 
     def chosen_layers(self):
-        #Returns QGIS layer names to "overwrite_datasets_options" which the user wants uploaded to StraboSpot
+        # Returns QGIS layer names to "overwrite_datasets_options" which the user wants uploaded to StraboSpot
         global upload_layer_list
         layer_index = self.dlg.qgislayers.currentRow()
         layer_name = self.dlg.qgislayers.currentItem().text()
@@ -1091,7 +1106,7 @@ class StraboSpot:
         # This is based on which option for upload the user chose:
         # Update Existing StraboSpot Dataset OR Create New StraboSpot Dataset
 
-        if sel_upload_method == "Overwrite": #the user wants to overwrite an existing StraboSpot dataset
+        if sel_upload_method == "Overwrite":  # the user wants to overwrite an existing StraboSpot dataset
             # Add label stuff
             self.dlg.upload_confirm_lbl.setText("Overwrite dataset(s) in StraboSpot")
             self.dlg.confirm_items_lbl.setText("Layers to upload...")
@@ -1105,7 +1120,7 @@ class StraboSpot:
                 # Get the layer object
                 lyr_index = int(lyr[1])
                 selected_layer = self.iface.mapCanvas().layer(lyr_index)
-                #Gather StraboSpot info about the layer
+                # Gather StraboSpot info about the layer
                 if str(lyr[0]) == selected_layer.name():
                     data_provider = selected_layer.source()
                     provider_type = selected_layer.providerType()
@@ -1152,10 +1167,10 @@ class StraboSpot:
                 self.dlg.create_prj_widget.addItem("Project: " + strabo_project_name)
                 self.dlg.create_prj_widget.addItem("Dataset: " + strabo_dataset_name)
 
-                #Add info to the list in the tuple
+                # Add info to the list in the tuple
                 upload_layer_list[lyr].append(strabo_dataset_id)
 
-        #No matter the upload method, convert each layer to GeoJSON
+        # No matter the upload method, convert each layer to GeoJSON
         for lyr in upload_layer_list:
             # Create a temp folder/file for layer GeoJSON files
             global temp_folder
@@ -1169,8 +1184,8 @@ class StraboSpot:
             selected_layer = self.iface.mapCanvas().layer(lyr_index)
             # Gather StraboSpot info about the layer
             if str(lyr[0]) == selected_layer.name():
-                #Convert layer to GeoJSON
-                #From Pg. 375 of QGIS Python Programming Cookbook; By: Joel Lawhead; accessed through GoogleBooks
+                # Convert layer to GeoJSON
+                # From Pg. 375 of QGIS Python Programming Cookbook; By: Joel Lawhead; accessed through GoogleBooks
                 error = QgsVectorFileWriter.writeAsVectorFormat(selected_layer, tmpfile, "utf-8",
                                                                 crs, "GeoJSON", onlySelected=False)
                 if error != QgsVectorFileWriter.NoError:
@@ -1178,38 +1193,38 @@ class StraboSpot:
 
     def upload_dataset(self):
         self.dlg.stackedWidget.setCurrentIndex(7)
-        #Overwrite Current Dataset
+        # Overwrite Current Dataset
         if sel_upload_method == "Overwrite":
-            #Go through the process to signal to StraboSpot to save a Version of the project
-            #Get project json
+            # Go through the process to signal to StraboSpot to save a Version of the project
+            # Get project json
             url = 'https://strabospot.org/db/project/' + projectid
             r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
             statuscode = r.status_code
             QgsMessageLog.logMessage(('Get projects code: ' + str(statuscode)))
             response = r.json()
-            #Update modified timestamp
+            # Update modified timestamp
             response['modified_timestamp'] = int(time.time())
             QgsMessageLog.logMessage("Modified Response: " + response)
 
-            #Post Modified Project JSON to StraboSpot
+            # Post Modified Project JSON to StraboSpot
             url = 'https://strabospot.org/db/project/' + projectid
             headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-            r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers, json=response,verify=False)
+            r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers, json=response, verify=False)
             statuscode = r.status_code
             QgsMessageLog.logMessage(('Post project code: ' + str(statuscode)))
 
-            #Iterate the Layers to Upload
+            # Iterate the Layers to Upload
             for lyr in upload_layer_list:
                 datasetid = lyr[2]
-                #Get All Spots in the dataset the layer is associated with
+                # Get All Spots in the dataset the layer is associated with
                 url = 'https://strabospot.org/db/datasetspots/' + str(datasetid)
                 r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
                 statuscode = r.status_code
                 response = r.json()
                 if str(statuscode) == "200":
-                    dataset_spots = response['features']    #This will later be compared to the geojson from the lyr
+                    dataset_spots = response['features']  # This will later be compared to the geojson from the lyr
 
-                    #Get the StraboSpot dataset JSON
+                    # Get the StraboSpot dataset JSON
                     url = 'https://strabospot.org/db/dataset/' + str(datasetid)
                     r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
                     statuscode = r.status_code
@@ -1217,14 +1232,14 @@ class StraboSpot:
                     if str(statuscode) == "200":
                         response['modified_timestamp'] = time.time()
 
-                    #Update the StraboSpot dataset JSON
+                    # Update the StraboSpot dataset JSON
                     url = 'https://strabospot.org/db/dataset/' + str(datasetid)
                     headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
                     r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers, json=response, verify=False)
                     statuscode = r.status_code
                     QgsMessageLog.logMessage(('Post project code: ' + str(statuscode)))
 
-                    for temp in gettempdir():   #read the files in the current temp directory
+                    for temp in gettempdir():  # read the files in the current temp directory
                         QgsMessageLog.logMessage(temp)
         elif sel_upload_method == "Create":
             # Choose dataset
@@ -1238,8 +1253,8 @@ class StraboSpot:
                 randInt = int(numpy.random.random())
                 timeStamp = str(unixTime) + str(randInt)
 
-                new_dataset_json = {"id": timeStamp, "name": lyr[0], \
-	                                "modified_timestamp":unixTime ,"date": datetime.datetime.utcnow()}
+                new_dataset_json = {"id": timeStamp, "name": lyr[0],
+                                    "modified_timestamp": unixTime, "date": datetime.datetime.utcnow()}
                 datasetid = lyr[2]
                 url = 'https://strabospot.org/db/dataset/' + str(datasetid)
                 headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
@@ -1251,7 +1266,3 @@ class StraboSpot:
         """Run method that performs all the real work"""
         # show the dialog
         self.dlg.show()
-
-
-
-
