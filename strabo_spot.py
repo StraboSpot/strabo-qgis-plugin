@@ -455,14 +455,15 @@ class StraboSpot:
         statuscode = r.status_code
         response = r.json()
         prj_json = response
-        rawprojectfile = datafolder + "\\" + prj + "_" + str(projectid) + ".json"
+        rawprojectfile = os.path.join(datafolder, f"{prj}_{str(projectid)}.json")
+        # rawprojectfile = datafolder + "\\" + prj + "_" + str(projectid) + ".json"
+        tag_spotids = []
         if str(statuscode) == "200" and (not str(prj_json) == 'None'):  # If project is successfully transferred from StraboSpot
             with open(rawprojectfile, 'w') as savedproject:
                 json.dump(prj_json, savedproject)
             # Check the project for Tags. Save any spotids to list.
             if 'tags' in prj_json:
                 prj_tags = prj_json['tags']
-                tag_spotids = []
                 for tag in prj_tags:
                     if 'spots' in tag:
                         for spot in tag['spots']:
@@ -520,7 +521,8 @@ class StraboSpot:
                 # Save the datasetspots response to datafolder
                 # This whole version of the dataset will be called upon during Upload
                 self.dlg.downloadProgresslabel.setText("Downloading: " + datasetname + "\r\n" + "in StraboSpot Project: " + projectname)
-                rawjsonfile = datafolder + "\\" + datasetname + "_" + str(datasetid) + ".json"
+                rawjsonfile = os.path.join(datafolder, f"{datasetname}_{str(datasetid)}.json")
+                # rawjsonfile = datafolder + "\\" + datasetname + "_" + str(datasetid) + ".json"
                 QgsMessageLog.logMessage('JSON file: ' + str(rawjsonfile))
                 with open(rawjsonfile, 'w') as savedrawjson:
                     json.dump(response, savedrawjson)
@@ -730,7 +732,9 @@ class StraboSpot:
                                     'features': newDatasetJson}
                         modifiedJson = json.dumps(fullJson)
                         # Save newly organized GeoJson array to file
-                        modifiedFileName = datafolder + "\\" + datasetname + "_" + geotype + "_" + str(datasetid) + ".geojson"
+                        modifiedFileName = os.path.join(datafolder,
+                                                        f"{datasetname}_{geotype}_{str(datasetid)}.geojson")
+                        # modifiedFileName = datafolder + "\\" + datasetname + "_" + geotype + "_" + str(datasetid) + ".geojson"
                         modifiedFileName = str.replace(str(modifiedFileName), "\\", "/")
                         modifiedJsonDict = json.loads(modifiedJson)
                         QgsMessageLog.logMessage('Modifided Json file: ' + modifiedFileName)
@@ -750,6 +754,7 @@ class StraboSpot:
                             # Try Adding the project info to the metadata for upload...
                             self.dlg.downloadprogressBar.setValue(downloadedimagescount + 2)
                             # Add to databases
+
                             if selDB == "SpatiaLite":
                                 self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
                                 table_exists = self.create_spatialite_table(newlayer, newDatasetJson, geotype, SL_conn, SL_cur)
@@ -784,6 +789,7 @@ class StraboSpot:
                             else:
                                 self._qgs_project.addMapLayer(newimagelayer)
 
+                        self.dlg.progBarLabel.setText(f"CurValue: {self.dlg.downloadprogressBar.value}, Max Value: {self.dlg.downloadprogressBar.maximum}")
                         if self.dlg.downloadprogressBar.value == self.dlg.downloadprogressBar.maximum:
                             self.dlg.close()
                 endMessage += "-StraboSpot Dataset, " + chosen[0] + ", successfully downloaded.\r\n"
@@ -889,7 +895,9 @@ class StraboSpot:
 
     def create_spatialite_db(self, folderpath, project_name):
         # Create/Connect to the database
-        slDB = folderpath + "\\" + project_name + datetime.datetime.now().strftime("_%m-%d-%y") + ".sqlite"
+        slDB = os.path.join(folderpath,
+                            f'{project_name}{datetime.datetime.now().strftime("_%m-%d-%y")}.sqlite')
+        # slDB = folderpath + "\\" + project_name + datetime.datetime.now().strftime("_%m-%d-%y") + ".sqlite"
         dbconnection = spatialite_connect(slDB)
         uri = QgsDataSourceUri()
         uri.setDatabase(slDB)
