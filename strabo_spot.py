@@ -36,7 +36,7 @@
 
 """
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QAction, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import QCoreApplication, QSettings, QTranslator, qVersion
 from PyQt5.QtSql import QSqlDatabase
 from qgis.core import QgsMessageLog, QgsVectorFileWriter, QgsVectorLayer, QgsProject, QgsDataSourceUri, QgsCoordinateReferenceSystem, Qgis
@@ -505,6 +505,7 @@ class StraboSpot:
                 if db_exists is True:
                     endMessage += "-PostGIS Database, " + postDB + " created.\r\n"
 
+        progBarMax = len(chosendatasets)
         # Iterate per dataset tuple (dataset's name and id)
         for chosen in chosendatasets:
             datasetname = chosen[0]
@@ -559,11 +560,10 @@ class StraboSpot:
                         downloadedimagescount = 0
                         if requestImages is True:
                             # self.dlg.progBarLabel.setText("Preparing to download " + datasetname + " and " + str(imageCount) + " images.") #Need to work on resizing
-                            progBarMax = imageCount + 3  # each downloaded image + (parsing GeoJSON, create layer, save layer(s) to db)
-                            self.dlg.downloadprogressBar.setMaximum(progBarMax)
+                            progBarMax += imageCount  # each downloaded image + (parsing GeoJSON, create layer, save layer(s) to db)
                             self.dlg.imageprogLabel.setText(
                                 "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " downloaded.")
-                            imgFolder = str(datafolder) + "/" + datasetname + "_Images"
+                            imgFolder = os.path.join(datafolder, f"{datasetname}_Images")
                             try:
                                 os.makedirs(imgFolder)
                             except OSError as exception:
@@ -573,10 +573,9 @@ class StraboSpot:
                                     imgFolder = datafolder
                             # Initialize Json for making an images layer
                             imagesJson = []
-                        else:
-                            progBarMax = 3  # parsing GeoJSON, create layer, save layer(s) to db (Perhaps this should be Spot#?)
-                            self.dlg.downloadprogressBar.setMaximum(progBarMax)
-                            #self.dlg.progBarLabel.setText("Downloading StraboSpot dataset: " + datasetname + "...")
+
+                        progBarMax += 2  # parsing GeoJSON, create layer, save layer(s) to db (Perhaps this should be Spot#?)
+                        self.dlg.downloadprogressBar.setMaximum(progBarMax)
 
                         # Iterate Spots to reorganize nested arrays and download images
                         newDatasetJson = []
@@ -706,12 +705,12 @@ class StraboSpot:
                                     # QgsMessageLog.logMessage(imgURL)
                                     # If the user requested images be downloaded, retrieve image from StraboSpot
                                     if requestImages is True:
+                                        downloadedimagescount += 1
                                         r = requests.get(imgURL, auth=HTTPBasicAuth(username, password), verify=False, stream=True)
                                         statuscode = r.status_code
                                         #QgsMessageLog.logMessage(imgURL + " accessed with status code " + str(statuscode))
                                         # If the image was successfully retrieved from StraboSpot, save to file and geoTag
                                         if str(statuscode) == '200':
-                                            downloadedimagescount += 1
                                             imgFile = imgFolder + "/" + str(imgID) + fileExte
                                             with open(imgFile, 'wb') as f:
                                                 r.raw.decode_content = True
@@ -721,6 +720,7 @@ class StraboSpot:
                                         elif str(statuscode) == '404':
                                             warningMsg = "Image with id: " + str(imgID) + " not downloaded. Click 'Ok' to continue downloading."
                                             result = QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
+
                                         self.dlg.downloadprogressBar.setValue(downloadedimagescount)
                                         self.dlg.imageprogLabel.setText(
                                             "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " successfully downloaded.")
@@ -741,7 +741,7 @@ class StraboSpot:
                         with open(modifiedFileName, 'w') as savemodJson:
                             json.dump(modifiedJsonDict, savemodJson)
 
-                        self.dlg.downloadprogressBar.setValue(downloadedimagescount + 1)
+                        self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
                         self.dlg.progBarLabel.setText("Creating QGIS layer of name: " + datasetname + "...")
 
                         # Add the modified Json file as a QGIS Layer
@@ -752,7 +752,6 @@ class StraboSpot:
                         else:
                             self._qgs_project.addMapLayer(newlayer)
                             # Try Adding the project info to the metadata for upload...
-                            self.dlg.downloadprogressBar.setValue(downloadedimagescount + 2)
                             # Add to databases
 
                             if selDB == "SpatiaLite":
@@ -772,6 +771,8 @@ class StraboSpot:
                                 if resultBool is False:
                                     endMessage += "-Error creating PostGIS table for, " + datasetname + "_" + geotype + ", see Message Log for details."
 
+                        self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
+
                         if requestImages is True and (not imagesJson == []):
                             allImagesJson = {'type': 'FeatureCollection',
                                              'features': imagesJson}
@@ -789,8 +790,8 @@ class StraboSpot:
                             else:
                                 self._qgs_project.addMapLayer(newimagelayer)
 
-                        self.dlg.progBarLabel.setText(f"CurValue: {self.dlg.downloadprogressBar.value}, Max Value: {self.dlg.downloadprogressBar.maximum}")
-                        if self.dlg.downloadprogressBar.value == self.dlg.downloadprogressBar.maximum:
+                        self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
+                        if self.dlg.downloadprogressBar.value() == self.dlg.downloadprogressBar.maximum():
                             self.dlg.close()
                 endMessage += "-StraboSpot Dataset, " + chosen[0] + ", successfully downloaded.\r\n"
 
