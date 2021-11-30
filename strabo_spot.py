@@ -803,7 +803,7 @@ class StraboSpot:
                                 https://gis.stackexchange.com/questions/123675/how-to-get-image-pop-ups-in-qgis
                                 But in QGIS 3.0 can use 'setMapTipTemplate' 
                                 Be sure in informational videos to tell user where to edit the HTML!'''
-                            newimagelayer.setDisplayField('<b> Image ID: </b> [% "id" %] <br> <img src ="[% "path" %]" width=400 height=400/>')
+                            newimagelayer.setMapTipTemplate('<b> Image ID: </b> [% "id" %] <br> <img src ="[% "path" %]" width=400 height=400/>')
                             if not newimagelayer.isValid():
                                 QgsMessageLog.logMessage("Image layer is not valid...")
                             else:
