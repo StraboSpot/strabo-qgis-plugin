@@ -830,6 +830,9 @@ class StraboSpot:
         # Notify user of what was downloaded and created
         QMessageBox.information(None, "Download Complete", endMessage, QMessageBox.Ok)
 
+        # And recycle the dialog for another use
+        self.backdialog()
+
     def setJpeg(self):
         global fileExte
         fileExte = ".jpeg"
