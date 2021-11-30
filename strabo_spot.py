@@ -161,7 +161,7 @@ class StraboSpot:
         self.dlg.websitelabel.setOpenExternalLinks(True)
 
         # Create a QgsProject instance to manage layers
-        self._qgs_project = QgsProject()
+        self._qgs_project = QgsProject.instance()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
