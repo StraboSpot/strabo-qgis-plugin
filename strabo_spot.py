@@ -408,6 +408,7 @@ class StraboSpot:
         self.dlg.dialogPathlineEdit.setText(QFileDialog.getExistingDirectory(None, "Make a new folder here", os.path.expanduser("~"), QFileDialog.ShowDirsOnly))
 
     def importSpots(self):
+        from . import wingdbstub
         """Does most of the work in download process (**==NEEDS WORK)
         **NEEDS TO BE WRITTEN FOR EACH DATASET THAT GETS CHOSEN ONCE IT WORKS FOR ONE...
         1.) **GETs and Saves the GeoJSON for the spots - DONE
@@ -421,6 +422,11 @@ class StraboSpot:
         self.dlg.downloadprogressBar.setTextVisible(True)
         self.dlg.stackedWidget.setCurrentIndex(4)
         endMessage = ""
+
+        # Using this as a band-aid to get UI events to show up during this loop
+        # ideally, this function should be refactored into a seperate thread
+        # that updates the GUI using signals/slots so the GUI can update normally.
+        QApplication.instance().processEvents()
 
         # Set up the folder where files and images will be saved
         prj_nospace = projectname.replace(' ', '')
@@ -522,6 +528,8 @@ class StraboSpot:
                 # Save the datasetspots response to datafolder
                 # This whole version of the dataset will be called upon during Upload
                 self.dlg.downloadProgresslabel.setText("Downloading: " + datasetname + "\r\n" + "in StraboSpot Project: " + projectname)
+                QApplication.instance().processEvents()
+
                 rawjsonfile = os.path.join(datafolder, f"{datasetname}_{str(datasetid)}.json")
                 # rawjsonfile = datafolder + "\\" + datasetname + "_" + str(datasetid) + ".json"
                 QgsMessageLog.logMessage('JSON file: ' + str(rawjsonfile))
@@ -538,6 +546,7 @@ class StraboSpot:
                 5.) (Optional) Save into a PostGIS database."""
 
                 geometryList = ['point', 'line', 'polygon']
+                found_geometry = False
                 for geotype in geometryList:
                     url = 'https://strabospot.org/db/datasetspotsarc/' + str(datasetid) + '/' + geotype
                     r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
@@ -546,6 +555,8 @@ class StraboSpot:
                     if str(statuscode) == "200":  # If dataset is successfully transferred from StraboSpot
                         if str(response) == 'None':  # If dataset doesn't have that geometry keep checking
                             continue
+                        else:
+                            found_geometry = True
                         parsed = response
                         # Set Up and Advance to the Download Progress Widget
                         fullDataset = parsed['features']
@@ -724,6 +735,8 @@ class StraboSpot:
                                         self.dlg.downloadprogressBar.setValue(downloadedimagescount)
                                         self.dlg.imageprogLabel.setText(
                                             "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " successfully downloaded.")
+
+                                        QApplication.instance().processEvents()
                                         newImg['properties']['path'] = imgFile
                                         imagesJson.append(newImg)
                                     newDatasetJson.append(newImg)
@@ -743,6 +756,7 @@ class StraboSpot:
 
                         self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
                         self.dlg.progBarLabel.setText("Creating QGIS layer of name: " + datasetname + "...")
+                        QApplication.instance().processEvents()
 
                         # Add the modified Json file as a QGIS Layer
                         layername = datasetname + "_" + geotype
@@ -772,6 +786,7 @@ class StraboSpot:
                                     endMessage += "-Error creating PostGIS table for, " + datasetname + "_" + geotype + ", see Message Log for details."
 
                         self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
+                        QApplication.instance().processEvents()
 
                         if requestImages is True and (not imagesJson == []):
                             allImagesJson = {'type': 'FeatureCollection',
@@ -790,10 +805,16 @@ class StraboSpot:
                             else:
                                 self._qgs_project.addMapLayer(newimagelayer)
 
+                        from . import wingdbstub
                         self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
+                        QApplication.instance().processEvents()
                         if self.dlg.downloadprogressBar.value() == self.dlg.downloadprogressBar.maximum():
                             self.dlg.close()
-                endMessage += "-StraboSpot Dataset, " + chosen[0] + ", successfully downloaded.\r\n"
+                if found_geometry:
+                    endMessage += "-StraboSpot Dataset, " + chosen[0] + ", successfully downloaded.\r\n"
+                else:
+                    endMessage += f"-StraboSpot Dataset, {chosen[0]} ERROR: No geometries found!\r\n"
+                    self.dlg.close()
 
             else:
                 errorMsg = "Dataset, " + datasetname + ", could not be downloaded from StraboSpot."
