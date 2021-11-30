@@ -721,6 +721,7 @@ class StraboSpot:
                                     # If the user requested images be downloaded, retrieve image from StraboSpot
                                     if requestImages is True:
                                         downloadedimagescount += 1
+                                        self.dlg.downloadprogressBar.setValue(downloadedimagescount)
                                         r = requests.get(imgURL, auth=HTTPBasicAuth(username, password), verify=False, stream=True)
                                         statuscode = r.status_code
                                         #QgsMessageLog.logMessage(imgURL + " accessed with status code " + str(statuscode))
@@ -736,7 +737,6 @@ class StraboSpot:
                                             warningMsg = "Image with id: " + str(imgID) + " not downloaded. Click 'Ok' to continue downloading."
                                             result = QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
 
-                                        self.dlg.downloadprogressBar.setValue(downloadedimagescount)
                                         self.dlg.imageprogLabel.setText(
                                             "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " successfully downloaded.")
 
