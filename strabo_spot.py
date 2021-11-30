@@ -35,6 +35,7 @@
  Function List (in class StraboSpot)
 
 """
+import sqlite3
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import QCoreApplication, QSettings, QTranslator, qVersion
@@ -136,7 +137,7 @@ class StraboSpot:
         self.dlg.projectlistWidget.itemClicked.connect(lambda: self.getprojectid("projectlistWidget"))
         self.dlg.datasetlistWidget.itemClicked.connect(self.getdatasetid)
         self.dlg.toOptionspushButton.clicked.connect(self.downloadOptionsGUI)
-        self.dlg.downloadradioButton.clicked.connect(self.deploydownloadGUI)
+        self.dlg.pbDownload.clicked.connect(self.deploydownloadGUI)
         self.dlg.browsepushButton.clicked.connect(self.filebrowse)
         self.dlg.importpushButton.clicked.connect(self.importSpots)
         self.dlg.jpegradioButton.clicked.connect(self.setJpeg)
@@ -144,10 +145,10 @@ class StraboSpot:
         self.dlg.postGISButton.clicked.connect(self.setPostGIS)
         self.dlg.spatiaLiteButton.clicked.connect(self.setSpatiaLite)
         # Handle some of the upload choices made by the user
-        self.dlg.uploadradioButton.clicked.connect(self.deployuploadGUI)
+        self.dlg.pbUpload.clicked.connect(self.deployuploadGUI)
         self.dlg.qgislayers.itemClicked.connect(self.chosen_layers)
-        self.dlg.overwrite_upload.clicked.connect(self.set_overwrite)
-        self.dlg.create_new_upload.clicked.connect(self.set_create)
+        self.dlg.pbOverwriteUpload.clicked.connect(self.set_overwrite)
+        self.dlg.pbCreateNewUpload.clicked.connect(self.set_create)
         self.dlg.choose_datasets_button.clicked.connect(self.setup_upload_confirm)
         self.dlg.upload_next_button.clicked.connect(self.upload_dataset)
         self.dlg.create_prj_widget.itemClicked.connect(lambda: self.getprojectid("create_prj_widget"))
@@ -332,6 +333,7 @@ class StraboSpot:
     def deploydownloadGUI(self):
         # If the user wants to download a dataset, move to StraboChoose GUI
         self.dlg.stackedWidget.setCurrentIndex(2)
+        self.getprojects("projectlistWidget")
 
     def getprojects(self, widget_name):
         if widget_name == "create_prj_widget":
@@ -405,7 +407,7 @@ class StraboSpot:
         self.dlg.stackedWidget.setCurrentIndex(3)
 
     def filebrowse(self):
-        self.dlg.dialogPathlineEdit.setText(QFileDialog.getExistingDirectory(None, "Make a new folder here", os.path.expanduser("~"), QFileDialog.ShowDirsOnly))
+        self.dlg.dialogPathlineEdit.setText(QFileDialog.getExistingDirectory(None, "Make a new folder here", options = QFileDialog.ShowDirsOnly))
 
     def importSpots(self):
         """Does most of the work in download process (**==NEEDS WORK)
@@ -932,7 +934,7 @@ class StraboSpot:
         sqlstatement = "SELECT InitSpatialMetadata(1)"
         try:
             dbcursor.execute(sqlstatement)
-        except db.Error as exe_error:
+        except sqlite3.OperationalError as exe_error:
             QgsMessageLog.logMessage("Error creating SpatiaLite Table: " + exe_error)
             return dbconnection, dbcursor, False
         dbconnection.commit()
@@ -958,12 +960,12 @@ class StraboSpot:
             fields.append(field.name() + " " + fieldtype)
         # https://www.gaia-gis.it/spatialite-2.4.0-4/splite-python.html
         # Create the table using the list of fields and field types
-        sqlstatement = "CREATE TABLE IF NOT EXISTS " + layername + "(" + ",".join(fields) + ");"
+        sqlstatement = f'CREATE TABLE IF NOT EXISTS "{layername}" ({",".join(fields)});'
         QgsMessageLog.logMessage(sqlstatement)
         try:
             dbcursor.execute(sqlstatement)
-        except db.Error as exe_error:
-            QgsMessageLog.logMessage("Error creating SpatiaLite Table: " + exe_error)
+        except sqlite3.OperationalError as exe_error:
+            QgsMessageLog.logMessage("Error creating SpatiaLite Table: " + str(exe_error))
             return False
 
         dbconnection.commit()
@@ -978,7 +980,7 @@ class StraboSpot:
         QgsMessageLog.logMessage(sqlstatement)
         try:
             dbcursor.execute(sqlstatement)
-        except db.Error as exe_error:
+        except sqlite3.OperationalError as exe_error:
             QgsMessageLog.logMessage("Error Adding Geometry Column to SpatiaLite Table: " + exe_error)
             return False
         dbconnection.commit()
@@ -997,8 +999,7 @@ class StraboSpot:
                         spotvals.append(0)
                     else:
                         spotvals.append(1)
-                elif isinstance(valuetoadd, int) or isinstance(valuetoadd, float) \
-                        or isinstance(valuetoadd, long):
+                elif isinstance(valuetoadd, int) or isinstance(valuetoadd, float):
                     spotvals.append(valuetoadd)
                 elif valuetoadd is None:  # Take care of Null values
                     spotvals.append("NULL")
@@ -1012,14 +1013,15 @@ class StraboSpot:
                       strgeom + '}'
             # Execute SQL statement inserting the row
             keys = ",".join(spotkeys)
-            vals = ",".join([unicode(i) for i in spotvals])
-            sqlstatement = "INSERT INTO " + layername + "(" + keys + ") VALUES " + "(" + vals + ",GeomFromGeoJSON('" + modgeom + "'))"
+            vals = ",".join([str(i) for i in spotvals])
+
+            sqlstatement = f'''INSERT INTO "{layername}" ({keys}) VALUES ({vals},GeomFromGeoJSON('{modgeom}'))'''
             QgsMessageLog.logMessage(json.dumps(modgeom))
 
             QgsMessageLog.logMessage(sqlstatement)
             try:
                 dbcursor.execute(sqlstatement)
-            except db.Error as exe_error:
+            except sqlite3.OperationalError as exe_error:
                 QgsMessageLog.logMessage("Error populating SpatiaLite table: " + exe_error)
                 return False
 
