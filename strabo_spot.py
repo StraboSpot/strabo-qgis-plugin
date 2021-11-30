@@ -423,17 +423,13 @@ class StraboSpot:
         self.dlg.stackedWidget.setCurrentIndex(4)
         endMessage = ""
 
-        # Using this as a band-aid to get UI events to show up during this loop
-        # ideally, this function should be refactored into a seperate thread
-        # that updates the GUI using signals/slots so the GUI can update normally.
-        QApplication.instance().processEvents()
-
         # Set up the folder where files and images will be saved
         prj_nospace = projectname.replace(' ', '')
         prj = prj_nospace.strip()
         directory = self.dlg.dialogPathlineEdit.text()
         projectfolder = prj + datetime.datetime.now().strftime("_%m_%d_%y")
         directory = str.replace(str(directory), "\\", "/")
+
         datafolder = (str(directory) + '/' + projectfolder)
         if projectfolder in directory:
             datafolder = directory
@@ -453,6 +449,13 @@ class StraboSpot:
         QgsMessageLog.logMessage("Folder name: " + str(datafolder))
         QgsMessageLog.logMessage(str(directory))
         QgsMessageLog.logMessage(str(datafolder))
+
+        # Using this as a band-aid to get UI events to show up during this loop
+        # ideally, this function should be refactored into a seperate thread
+        # that updates the GUI using signals/slots so the GUI can update normally.
+        QCoreApplication.instance().processEvents()
+        # Not sure why we need to run it twice, but we do.
+        QCoreApplication.instance().processEvents()
 
         # GET the project info from StraboSpot and save
         url = 'https://strabospot.org/db/project/' + str(projectid)
@@ -513,6 +516,7 @@ class StraboSpot:
 
         progBarMax = len(chosendatasets)
         # Iterate per dataset tuple (dataset's name and id)
+        QCoreApplication.instance().processEvents()
         for chosen in chosendatasets:
             datasetname = chosen[0]
             datasetid = chosen[1]
@@ -805,7 +809,6 @@ class StraboSpot:
                             else:
                                 self._qgs_project.addMapLayer(newimagelayer)
 
-                        from . import wingdbstub
                         self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
                         QApplication.instance().processEvents()
                         if self.dlg.downloadprogressBar.value() == self.dlg.downloadprogressBar.maximum():
