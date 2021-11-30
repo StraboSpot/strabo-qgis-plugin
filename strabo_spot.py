@@ -408,7 +408,6 @@ class StraboSpot:
         self.dlg.dialogPathlineEdit.setText(QFileDialog.getExistingDirectory(None, "Make a new folder here", os.path.expanduser("~"), QFileDialog.ShowDirsOnly))
 
     def importSpots(self):
-        from . import wingdbstub
         """Does most of the work in download process (**==NEEDS WORK)
         **NEEDS TO BE WRITTEN FOR EACH DATASET THAT GETS CHOSEN ONCE IT WORKS FOR ONE...
         1.) **GETs and Saves the GeoJSON for the spots - DONE
@@ -945,7 +944,7 @@ class StraboSpot:
         layername = qgislayer.name()
         exe_error = ""
 
-        for field in qgislayer.pendingFields():
+        for field in qgislayer.fields():
             fieldtype = field.typeName()
             if fieldtype == "String":
                 fieldtype = 'Text'
