@@ -46,7 +46,7 @@ PY_FILES = \
 	__init__.py \
 	strabo_spot.py strabo_spot_dialog.py
 
-UI_FILES = strabo_spot_dialog_base.ui
+UI_FILES = strabo_spot_dialog_base.ui strabo_spot_dialog.ui
 
 EXTRAS = metadata.txt icon.png
 
