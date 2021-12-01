@@ -160,7 +160,7 @@ class StraboSpot:
         self.dlg.websitelabel.setText('<a href="https://strabospot.org">Visit StraboSpot</a>')
         self.dlg.websitelabel.setOpenExternalLinks(True)
 
-        # Create a QgsProject instance to manage layers
+        # Get the QgsProject instance to manage layers
         self._qgs_project = QgsProject.instance()
 
     # noinspection PyMethodMayBeStatic
@@ -722,7 +722,7 @@ class StraboSpot:
                                     # If the user requested images be downloaded, retrieve image from StraboSpot
                                     if requestImages is True:
                                         downloadedimagescount += 1
-                                        self.dlg.downloadprogressBar.setValue(downloadedimagescount)
+                                        self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
                                         r = requests.get(imgURL, auth=HTTPBasicAuth(username, password), verify=False, stream=True)
                                         statuscode = r.status_code
                                         #QgsMessageLog.logMessage(imgURL + " accessed with status code " + str(statuscode))
