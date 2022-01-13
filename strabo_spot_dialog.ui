@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>549</width>
-    <height>404</height>
+    <height>406</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -381,7 +381,7 @@
       </layout>
      </widget>
      <widget class="QWidget" name="downloadOptions">
-      <layout class="QVBoxLayout" name="verticalLayout_11">
+      <layout class="QVBoxLayout" name="verticalLayout_16">
        <item>
         <widget class="QLabel" name="importlabel">
          <property name="font">
@@ -397,27 +397,41 @@
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_7">
+        <layout class="QVBoxLayout" name="verticalLayout_11">
+         <property name="spacing">
+          <number>0</number>
+         </property>
          <item>
-          <widget class="QPushButton" name="browsepushButton">
-           <property name="font">
-            <font>
-             <pointsize>10</pointsize>
-            </font>
-           </property>
+          <widget class="QLabel" name="label">
            <property name="text">
-            <string>Browse Files</string>
+            <string>Project file download folder location:</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="dialogPathlineEdit">
-           <property name="font">
-            <font>
-             <pointsize>10</pointsize>
-            </font>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <item>
+            <widget class="QLineEdit" name="dialogPathlineEdit">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+              </font>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="browsepushButton">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+              </font>
+             </property>
+             <property name="text">
+              <string>Browse Files</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
@@ -533,6 +547,9 @@
              <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,0">
               <item>
                <layout class="QVBoxLayout" name="verticalLayout_7">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
                 <item>
                  <widget class="QLabel" name="postgis_userlbl_2">
                   <property name="font">
@@ -558,6 +575,9 @@
               </item>
               <item>
                <layout class="QVBoxLayout" name="verticalLayout_8">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
                 <item>
                  <widget class="QLabel" name="postgis_portlbl">
                   <property name="text">
@@ -584,6 +604,9 @@
             </item>
             <item>
              <layout class="QVBoxLayout" name="verticalLayout_9">
+              <property name="spacing">
+               <number>0</number>
+              </property>
               <item>
                <widget class="QLabel" name="postgis_passlbl_2">
                 <property name="font">

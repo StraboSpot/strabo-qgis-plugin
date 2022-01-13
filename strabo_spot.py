@@ -48,7 +48,7 @@ import qgis.utils
 from qgis.utils import spatialite_connect
 
 # Initialize Qt resources from file resources.py
-from . import resources
+from . import resources, piexif
 # Import the code for the dialog
 from .strabo_spot_dialog import StraboSpotDialog
 import os.path
@@ -57,7 +57,6 @@ import json
 import errno
 import datetime
 import shutil
-import piexif
 import math
 import psycopg2
 import numpy
@@ -417,6 +416,13 @@ class StraboSpot:
             **a. Displays the images in a photo layer.-DONE
         3.) **Puts the GeoJSON into QGIS-- Need to solve the problem with nested arrays - DONE
         4.) **Adds the GeoJSON layers in QGIS to some sort of database? SpatiaLite or PostGIS??"""
+        directory = self.dlg.dialogPathlineEdit.text()
+        if not directory:
+            QMessageBox.critical(None, "Error",
+                                 "Please enter a path in which to save the project folder.",
+                                 QMessageBox.Ok)
+            return
+
         self.dlg.downloadProgresslabel.setText("Retrieving: " + projectname + "\r\n" + "from StraboSpot...")
         self.dlg.downloadprogressBar.setMinimum(0)
         self.dlg.downloadprogressBar.setValue(0)
@@ -427,7 +433,7 @@ class StraboSpot:
         # Set up the folder where files and images will be saved
         prj_nospace = projectname.replace(' ', '')
         prj = prj_nospace.strip()
-        directory = self.dlg.dialogPathlineEdit.text()
+
         projectfolder = prj + datetime.datetime.now().strftime("_%m_%d_%y")
         directory = str.replace(str(directory), "\\", "/")
 
