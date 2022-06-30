@@ -40,7 +40,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import QCoreApplication, QSettings, QTranslator, qVersion
 from PyQt5.QtSql import QSqlDatabase
-from qgis.core import QgsMessageLog, QgsVectorFileWriter, QgsVectorLayer, QgsProject, QgsDataSourceUri, QgsCoordinateReferenceSystem, Qgis
+from qgis.core import QgsMessageLog, QgsVectorFileWriter, QgsVectorLayer, QgsProject, QgsDataSourceUri, QgsCoordinateTransformContext, Qgis
 from qgis.gui import QgsMessageBar
 import qgis.utils
 
@@ -1116,6 +1116,7 @@ class StraboSpot:
             warningMsg = "No open layers detected. \r\n" \
                          "Please close the StraboSpot Plug-In, open the layers to upload, and try again. "
             QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
+            return
         # To add the layers in the same order as they are in the table of contents
         # sel_layers_list.reverse()
         for lyr in sel_layers_tup:
@@ -1220,7 +1221,14 @@ class StraboSpot:
             handle, tmpfile = mkstemp(suffix='.geojson')
             temp_folder = handle
             os.close(handle)
-            crs = QgsCoordinateReferenceSystem(4326)
+            ctx = QgsCoordinateTransformContext()
+            save_opts = QgsVectorFileWriter.SaveVectorOptions()
+            #save_opts.ct = crs
+            save_opts.driverName = "GeoJSON"
+            save_opts.onlySelectedFeatures = False
+            save_opts.fileEncoding = "utf-8"
+            
+            
 
             # Get the layer object
             lyr_index = int(lyr[1])
@@ -1229,8 +1237,9 @@ class StraboSpot:
             if str(lyr[0]) == selected_layer.name():
                 # Convert layer to GeoJSON
                 # From Pg. 375 of QGIS Python Programming Cookbook; By: Joel Lawhead; accessed through GoogleBooks
-                error = QgsVectorFileWriter.writeAsVectorFormat(selected_layer, tmpfile, "utf-8",
-                                                                crs, "GeoJSON", onlySelected=False)
+                # error = QgsVectorFileWriter.writeAsVectorFormat(selected_layer, tmpfile, "utf-8",
+                                                                # crs, "GeoJSON", onlySelected=False)
+                error,out_file = QgsVectorFileWriter.writeAsVectorFormatV2(selected_layer, tmpfile, ctx, save_opts)
                 if error != QgsVectorFileWriter.NoError:
                     QgsMessageLog.logMessage("Layer: " + selected_layer.name() + " could not be converted to GeoJSON and will not be uploaded.")
 
@@ -1285,6 +1294,7 @@ class StraboSpot:
                     for temp in gettempdir():  # read the files in the current temp directory
                         QgsMessageLog.logMessage(temp)
         elif sel_upload_method == "Create":
+            QgsMessageLog.logMessage(f"Project ID: {projectid}")
             # Choose dataset
             # Choose project to add it to
             # Create new strabo dataset and add to project
@@ -1295,15 +1305,31 @@ class StraboSpot:
                 unixTime = int(time.time())
                 randInt = int(numpy.random.random())
                 timeStamp = str(unixTime) + str(randInt)
+                current_date = datetime.datetime.utcnow()
+                current_date = current_date.strftime('%m/%d/%Y')
+                
+                # Add dataset ID to layer object
+                lyr.append(timeStamp)
 
+                #Create a dataset for this layer
+                QgsMessageLog.logMessage(f"Creating dataset for layer {lyr[0]}")
+                
                 new_dataset_json = {"id": timeStamp, "name": lyr[0],
-                                    "modified_timestamp": unixTime, "date": datetime.datetime.utcnow()}
-                datasetid = lyr[2]
-                url = 'https://strabospot.org/db/dataset/' + str(datasetid)
+                                    "modified_timestamp": unixTime, "date": current_date}
+                
+                url = 'https://strabospot.org/db/dataset/'
                 headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-                r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers, json=new_dataset_json,
-                                  verify=False)
+                r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers,
+                                  json=new_dataset_json, verify=False)
                 statuscode = r.status_code
+                QgsMessageLog.logMessage(('Post create dataset: ' + str(statuscode)))
+                
+                # Add this dataset to the selected project
+                url = f'https://strabospot.org/db/projectDatasets/{projectid}'
+                r = requests.post(url, auth =HTTPBasicAuth(username, password), headers=headers,
+                                  json = {'id': timeStamp,})
+                statuscode = r.status_code
+                QgsMessageLog.logMessage(('Post add dataset to project: ' + str(statuscode) +": " + str(r.text) ))
 
     def run(self):
         """Run method that performs all the real work"""
