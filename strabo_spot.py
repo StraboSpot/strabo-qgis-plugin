@@ -89,6 +89,7 @@ class StraboSpot:
     upload_layer_list = []
     sel_upload_method = None
     temp_folder = None
+    layer_geojson = {}
 
     def __init__(self, iface):
         """Constructor.
@@ -1129,7 +1130,8 @@ class StraboSpot:
         global upload_layer_list
         layer_index = self.dlg.qgislayers.currentRow()
         layer_name = self.dlg.qgislayers.currentItem().text()
-        upload_layer_list.append([layer_name, layer_index])
+        upload_layer_list.append({'name': layer_name, 'index': layer_index})
+        # upload_layer_list.append([layer_name, layer_index])
 
     def set_overwrite(self):
         global sel_upload_method
@@ -1162,14 +1164,14 @@ class StraboSpot:
                 strabo_project_id = ""
                 strabo_dataset_id = ""
                 # Get the layer object
-                lyr_index = int(lyr[1])
+                lyr_index = int(lyr['index'])
                 selected_layer = self.iface.mapCanvas().layer(lyr_index)
                 # Gather StraboSpot info about the layer
-                if str(lyr[0]) == selected_layer.name():
+                if str(lyr['name']) == selected_layer.name():
                     data_provider = selected_layer.source()
                     provider_type = selected_layer.providerType()
                     QgsMessageLog.logMessage(
-                        "Data Provider for " + lyr[0] + " is " + data_provider + " from " + provider_type)
+                        "Data Provider for " + lyr['name'] + " is " + data_provider + " from " + provider_type)
                     if provider_type == "spatialite" or provider_type == "postgres":  # If Sqlite layer or PostGIS
                         provider_list = data_provider.split(" ")
                         for kvp in provider_list:
@@ -1212,7 +1214,7 @@ class StraboSpot:
                 self.dlg.create_prj_widget.addItem("Dataset: " + strabo_dataset_name)
 
                 # Add info to the list in the tuple
-                upload_layer_list[lyr].append(strabo_dataset_id)
+                lyr['dataset'] = strabo_dataset_id
 
         # No matter the upload method, convert each layer to GeoJSON
         for lyr in upload_layer_list:
@@ -1227,14 +1229,12 @@ class StraboSpot:
             save_opts.driverName = "GeoJSON"
             save_opts.onlySelectedFeatures = False
             save_opts.fileEncoding = "utf-8"
-            
-            
 
             # Get the layer object
-            lyr_index = int(lyr[1])
+            lyr_index = int(lyr['index'])
             selected_layer = self.iface.mapCanvas().layer(lyr_index)
             # Gather StraboSpot info about the layer
-            if str(lyr[0]) == selected_layer.name():
+            if str(lyr['name']) == selected_layer.name():
                 # Convert layer to GeoJSON
                 # From Pg. 375 of QGIS Python Programming Cookbook; By: Joel Lawhead; accessed through GoogleBooks
                 # error = QgsVectorFileWriter.writeAsVectorFormat(selected_layer, tmpfile, "utf-8",
@@ -1242,8 +1242,12 @@ class StraboSpot:
                 error,out_file = QgsVectorFileWriter.writeAsVectorFormatV2(selected_layer, tmpfile, ctx, save_opts)
                 if error != QgsVectorFileWriter.NoError:
                     QgsMessageLog.logMessage("Layer: " + selected_layer.name() + " could not be converted to GeoJSON and will not be uploaded.")
+                else:
+                    lyr['geojson'] = tmpfile
+                
 
     def upload_dataset(self):
+        from . import wingdbstub
         self.dlg.stackedWidget.setCurrentIndex(7)
         # Overwrite Current Dataset
         if sel_upload_method == "Overwrite":
@@ -1267,7 +1271,7 @@ class StraboSpot:
 
             # Iterate the Layers to Upload
             for lyr in upload_layer_list:
-                datasetid = lyr[2]
+                datasetid = lyr['dataset']
                 # Get All Spots in the dataset the layer is associated with
                 url = 'https://strabospot.org/db/datasetspots/' + str(datasetid)
                 r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
@@ -1291,15 +1295,15 @@ class StraboSpot:
                     statuscode = r.status_code
                     QgsMessageLog.logMessage(('Post project code: ' + str(statuscode)))
 
-                    for temp in gettempdir():  # read the files in the current temp directory
-                        QgsMessageLog.logMessage(temp)
         elif sel_upload_method == "Create":
+            from . import wingdbstub
             QgsMessageLog.logMessage(f"Project ID: {projectid}")
             # Choose dataset
             # Choose project to add it to
             # Create new strabo dataset and add to project
             # Get layer GeoJSON, parse to morph spots (same IDs), use it to populate new dataset
             for lyr in upload_layer_list:
+                from . import wingdbstub
                 #unixTime = int(round((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds() * 1000))
                 # unixTime logic based on 3rd answer from here: https://stackoverflow.com/questions/5998245/get-current-time-in-milliseconds-in-python?noredirect=1&lq=1
                 unixTime = int(time.time())
@@ -1309,12 +1313,12 @@ class StraboSpot:
                 current_date = current_date.strftime('%m/%d/%Y')
                 
                 # Add dataset ID to layer object
-                lyr.append(timeStamp)
+                lyr['dataset'] = timeStamp
 
                 #Create a dataset for this layer
-                QgsMessageLog.logMessage(f"Creating dataset for layer {lyr[0]}")
+                QgsMessageLog.logMessage(f"Creating dataset for layer {lyr['name']}")
                 
-                new_dataset_json = {"id": timeStamp, "name": lyr[0],
+                new_dataset_json = {"id": timeStamp, "name": lyr['name'],
                                     "modified_timestamp": unixTime, "date": current_date}
                 
                 url = 'https://strabospot.org/db/dataset/'
@@ -1331,6 +1335,20 @@ class StraboSpot:
                 statuscode = r.status_code
                 QgsMessageLog.logMessage(('Post add dataset to project: ' + str(statuscode) +": " + str(r.text) ))
 
+        # Upload the spots for the selected layers
+        tempdir = gettempdir()
+        headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
+        for lyr in upload_layer_list:
+            spot_url = f"https://strabospot.org/db/datasetspots/{lyr['dataset']}"            
+            tmpfile = lyr['geojson']
+            geojson = os.path.join(tempdir, tmpfile)
+            with open(geojson, 'r') as gjfile:
+                geo_json = gjfile.read()
+                r = requests.post(spot_url, auth=HTTPBasicAuth(username, password),
+                                  headers=headers, data=geo_json, verify=False)
+                statuscode = r.status_code
+                QgsMessageLog.logMessage(('Post upload spots: ' + str(statuscode)+": " + str(r.text)))                
+                
     def run(self):
         """Run method that performs all the real work"""
         # show the dialog
