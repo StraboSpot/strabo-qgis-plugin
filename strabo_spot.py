@@ -74,7 +74,7 @@ class StraboSpot:
     # These are global variables
     global username, password, projectid, projectids, datasetids, projectname,\
         requestImages, fileExte, chosendatasets, selDB,\
-        upload_layer_list, sel_upload_method, temp_folder
+        sel_upload_method, temp_folder
     username = None
     password = None
     projectid = None
@@ -149,7 +149,7 @@ class StraboSpot:
         self.dlg.qgislayers.itemClicked.connect(self.chosen_layers)
         self.dlg.pbOverwriteUpload.clicked.connect(self.set_overwrite)
         self.dlg.pbCreateNewUpload.clicked.connect(self.set_create)
-        self.dlg.choose_datasets_button.clicked.connect(self.setup_upload_confirm)
+        #self.dlg.choose_datasets_button.clicked.connect(self.setup_upload_confirm)
         self.dlg.upload_next_button.clicked.connect(self.upload_dataset)
         self.dlg.create_prj_widget.itemClicked.connect(lambda: self.getprojectid("create_prj_widget"))
 
@@ -162,6 +162,8 @@ class StraboSpot:
 
         # Get the QgsProject instance to manage layers
         self._qgs_project = QgsProject.instance()
+        
+        self.dlg.stackedWidget.setCurrentIndex(0)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -1127,11 +1129,10 @@ class StraboSpot:
 
     def chosen_layers(self):
         # Returns QGIS layer names to "overwrite_datasets_options" which the user wants uploaded to StraboSpot
-        global upload_layer_list
         layer_index = self.dlg.qgislayers.currentRow()
         layer_name = self.dlg.qgislayers.currentItem().text()
-        upload_layer_list.append({'name': layer_name, 'index': layer_index})
-        # upload_layer_list.append([layer_name, layer_index])
+        self.upload_layer_list.append({'name': layer_name, 'index': layer_index})
+        # self.upload_layer_list.append([layer_name, layer_index])
 
     def set_overwrite(self):
         global sel_upload_method
@@ -1156,7 +1157,7 @@ class StraboSpot:
             # Add label stuff
             self.dlg.upload_confirm_lbl.setText("Overwrite dataset(s) in StraboSpot")
             self.dlg.confirm_items_lbl.setText("Layers to upload...")
-            for lyr in upload_layer_list:
+            for lyr in self.upload_layer_list:
 
                 # Set up vars
                 strabo_project_name = ""
@@ -1217,8 +1218,12 @@ class StraboSpot:
                 lyr['dataset'] = strabo_dataset_id
 
         # No matter the upload method, convert each layer to GeoJSON
-        for lyr in upload_layer_list:
+        for lyr in self.upload_layer_list:
             # Create a temp folder/file for layer GeoJSON files
+            self.dlg.uploadProgressBar.setValue(self.dlg.uploadProgressBar.value() + 1)
+            self.dlg.uploadStatus.setText(f"Creating GeoJSON for layer {lyr['name']}")
+            QApplication.processEvents()
+            
             global temp_folder
             handle, tmpfile = mkstemp(suffix='.geojson')
             temp_folder = handle
@@ -1251,6 +1256,13 @@ class StraboSpot:
     def upload_dataset(self):
         from . import wingdbstub
         self.dlg.stackedWidget.setCurrentIndex(7)
+        self.dlg.uploadProgressBar.setMaximum(len(self.upload_layer_list) *3)
+        self.dlg.uploadProgressBar.setValue(0)
+        self.dlg.uploadStatus.setText("Creating layer GeoJSON")
+        QApplication.processEvents()
+        
+        self.setup_upload_confirm()
+        
         # Overwrite Current Dataset
         if sel_upload_method == "Overwrite":
             # Go through the process to signal to StraboSpot to save a Version of the project
@@ -1272,7 +1284,11 @@ class StraboSpot:
             QgsMessageLog.logMessage(('Post project code: ' + str(statuscode)))
 
             # Iterate the Layers to Upload
-            for lyr in upload_layer_list:
+            for lyr in self.upload_layer_list:
+                self.dlg.uploadProgressBar.setValue(self.dlg.uploadProgressBar.value() + 1)
+                self.dlg.uploadStatus.setText(f"Getting existing dataset for layer {lyr['name']}")
+                QApplication.processEvents()
+                
                 datasetid = lyr['dataset']
                 # Get All Spots in the dataset the layer is associated with
                 url = 'https://strabospot.org/db/datasetspots/' + str(datasetid)
@@ -1304,8 +1320,17 @@ class StraboSpot:
             # Choose project to add it to
             # Create new strabo dataset and add to project
             # Get layer GeoJSON, parse to morph spots (same IDs), use it to populate new dataset
-            for lyr in upload_layer_list:
+            for lyr in self.upload_layer_list:
                 from . import wingdbstub
+                if not "geojson" in lyr:
+                    # Have not clicked the "select layers" button yet. Error and stop.
+                    QMessageBox.warning(None, "Operational Error", "Layers not set up. Please click the 'Select Layers' button first")
+                    self.dlg.stackedWidget.setCurrentIndex(6)                    
+                    return
+                
+                self.dlg.uploadProgressBar.setValue(self.dlg.uploadProgressBar.value() + 1)
+                self.dlg.uploadStatus.setText(f"Creating dataset for layer {lyr['name']}")
+                QApplication.processEvents()                
                 #unixTime = int(round((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds() * 1000))
                 # unixTime logic based on 3rd answer from here: https://stackoverflow.com/questions/5998245/get-current-time-in-milliseconds-in-python?noredirect=1&lq=1
                 unixTime = int(time.time())
@@ -1340,8 +1365,12 @@ class StraboSpot:
         # Upload the spots for the selected layers
         tempdir = gettempdir()
         headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-        for lyr in upload_layer_list:
-            spot_url = f"https://strabospot.org/db/datasetspots/{lyr['dataset']}"            
+        for lyr in self.upload_layer_list:
+            self.dlg.uploadProgressBar.setValue(self.dlg.uploadProgressBar.value() + 1)
+            self.dlg.uploadStatus.setText(f"Uploading spots for layer {lyr['name']}")
+            QApplication.processEvents()
+            
+            spot_url = f"https://strabospot.org/db/datasetspots/{lyr['dataset']}"
             tmpfile = lyr['geojson']
             geojson = os.path.join(tempdir, tmpfile)
             with open(geojson, 'r') as gjfile:
@@ -1354,7 +1383,13 @@ class StraboSpot:
                 statuscode = r.status_code
                 QgsMessageLog.logMessage(('Post upload spots: ' + str(statuscode)+": " + str(r.text)))
         
+        self.dlg.uploadProgressBar.setValue(self.dlg.uploadProgressBar.maximum())
+        self.dlg.uploadStatus.setText(f"Complete")
+        QApplication.processEvents()
+                
         QMessageBox.information(None, "Upload Complete","Upload process is complete", QMessageBox.Ok)
+        # Reset the upload layer list
+        self.upload_layer_list = []
         self.backdialog(home = True)
                 
     def run(self):
