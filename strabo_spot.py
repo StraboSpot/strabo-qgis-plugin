@@ -271,7 +271,11 @@ class StraboSpot:
         # remove the toolbar
         del self.toolbar
 
-    def backdialog(self):
+    def backdialog(self, home = False):
+        if home:
+            self.dlg.stackedWidget.setCurrentIndex(1)
+            return
+        
         # Handles all the back buttons based on which part of the Stacked Widget displayed
         currentIndex = self.dlg.stackedWidget.currentIndex()
         if currentIndex == 1:
@@ -283,15 +287,11 @@ class StraboSpot:
             username = None
             global password
             password = None
-        elif currentIndex == 2:
-            # Take the user back to where they choose download or upload
-            self.dlg.stackedWidget.setCurrentIndex(1)
-        elif currentIndex == 3:
-            # Take the user back to choosing project-->dataset to download
-            self.dlg.stackedWidget.setCurrentIndex(2)
         elif currentIndex == 4:
             # Take the user back to where they choose download or upload
             self.dlg.stackedWidget.setCurrentIndex(1)
+        else:
+            self.dlg.stackedWidget.setCurrentIndex(currentIndex - 1)
 
     def handleLoginButton(self):
         # Log-In to Strabo -- should work for all user inputs
@@ -1235,11 +1235,13 @@ class StraboSpot:
             selected_layer = self.iface.mapCanvas().layer(lyr_index)
             # Gather StraboSpot info about the layer
             if str(lyr['name']) == selected_layer.name():
+                from . import wingdbstub
                 # Convert layer to GeoJSON
                 # From Pg. 375 of QGIS Python Programming Cookbook; By: Joel Lawhead; accessed through GoogleBooks
                 # error = QgsVectorFileWriter.writeAsVectorFormat(selected_layer, tmpfile, "utf-8",
                                                                 # crs, "GeoJSON", onlySelected=False)
-                error,out_file = QgsVectorFileWriter.writeAsVectorFormatV2(selected_layer, tmpfile, ctx, save_opts)
+                error,lyr_name,out_path,out_file = QgsVectorFileWriter.writeAsVectorFormatV3(selected_layer, tmpfile, ctx, save_opts)
+                QgsMessageLog.logMessage(f"Created GeoJSON for {lyr['name']} as {out_path}")
                 if error != QgsVectorFileWriter.NoError:
                     QgsMessageLog.logMessage("Layer: " + selected_layer.name() + " could not be converted to GeoJSON and will not be uploaded.")
                 else:
@@ -1343,11 +1345,17 @@ class StraboSpot:
             tmpfile = lyr['geojson']
             geojson = os.path.join(tempdir, tmpfile)
             with open(geojson, 'r') as gjfile:
-                geo_json = gjfile.read()
+                geo_json = json.load(gjfile)
+                features = [x for x in geo_json['features']
+                            if x['properties'].get('id', True) is not None]
+                geo_json['features'] = features
                 r = requests.post(spot_url, auth=HTTPBasicAuth(username, password),
-                                  headers=headers, data=geo_json, verify=False)
+                                  headers=headers, json=geo_json, verify=False)
                 statuscode = r.status_code
-                QgsMessageLog.logMessage(('Post upload spots: ' + str(statuscode)+": " + str(r.text)))                
+                QgsMessageLog.logMessage(('Post upload spots: ' + str(statuscode)+": " + str(r.text)))
+        
+        QMessageBox.information(None, "Upload Complete","Upload process is complete", QMessageBox.Ok)
+        self.backdialog(home = True)
                 
     def run(self):
         """Run method that performs all the real work"""
