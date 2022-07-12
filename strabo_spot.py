@@ -1284,7 +1284,6 @@ class StraboSpot:
                 
 
     def upload_dataset(self):
-        from . import wingdbstub
         self.dlg.stackedWidget.setCurrentIndex(7)
         self.dlg.uploadProgressBar.setMaximum(len(self.upload_layer_list) *3 + 1)
         self.dlg.uploadProgressBar.setValue(0)
