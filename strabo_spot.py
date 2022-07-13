@@ -127,6 +127,7 @@ class StraboSpot:
         self.dlg.backto2pushButton.clicked.connect(self.backdialog)
         self.dlg.backtodatasetspushButton.clicked.connect(self.backdialog)
         self.dlg.back2pushButton.clicked.connect(self.backdialog)
+        self.dlg.backToOperation.clicked.connect(lambda: self.backdialog(home = True))
         # Handle all the download choices made by the user
         self.dlg.loginpushButton.clicked.connect(self.handleLoginButton)
         # Adding extra args to qt slot: https://eli.thegreenplace.net/2011/04/25/passing-extra-arguments-to-pyqt-slot
@@ -604,7 +605,7 @@ class StraboSpot:
                                 spotself = spotprop['self']
                             except KeyError as e:
                                 QMessageBox.warning(None, "Spot loading error",
-                                                    f"Unable to load spot: {e}")
+                                                    f"Unable to load a spot: missing key {e}")
                                 continue
                             newSpot = {}
                             newSpot['type'] = 'Feature'

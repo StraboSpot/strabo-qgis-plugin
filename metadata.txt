@@ -8,10 +8,10 @@
 
 [general]
 name=StraboSpot
-qgisMinimumVersion=3.0
+qgisMinimumVersion=3.20
 description=Download and Upload Strabo data to and from QGIS. 
-version=0.2
-author=Emily Bunse - University of Kansas
+version=0.3
+author=Emily Bunse - University of Kansas. Portions by Israel Brewster - Alaska Volcano Observatory
 email=egbunse@gmail.com
 
 about=StraboSpot is a project comprised of a mobile application for collection of geologic data in the field and an online, graph database for data storage and sharing. This plug-in interacts with the online database through a series of REST commands (GET and POST) in order to download and upload a user's Strabo-generated data in GeoJson form for use in QGIS.
