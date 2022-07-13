@@ -72,9 +72,6 @@ from tempfile import mkstemp, gettempdir
 class StraboSpot:
     """QGIS Plugin Implementation."""
     # These are global variables
-    global username, password, projectids, datasetids, projectname,\
-        requestImages, fileExte, chosendatasets, selDB,\
-        sel_upload_method, temp_folder
     username = None
     password = None
     projectid = None
@@ -285,10 +282,8 @@ class StraboSpot:
             self.dlg.stackedWidget.setCurrentIndex(0)
             self.dlg.userlineEdit.clear()
             self.dlg.passwordlineEdit.clear()
-            global username
-            username = None
-            global password
-            password = None
+            self.username = None
+            self.password = None
         elif currentIndex == 4:
             # Take the user back to where they choose download or upload
             self.dlg.stackedWidget.setCurrentIndex(1)
@@ -297,13 +292,11 @@ class StraboSpot:
 
     def handleLoginButton(self):
         # Log-In to Strabo -- should work for all user inputs
-        global username
-        username = self.dlg.userlineEdit.text()
-        global password
-        password = self.dlg.passwordlineEdit.text()
-        # QgsMessageLog.logMessage('username:' + username + " password: " + password)
+        self.username = self.dlg.userlineEdit.text()
+        self.password = self.dlg.passwordlineEdit.text()
+        # QgsMessageLog.logMessage('username:' + self.username + " password: " + password)
         url = 'https://strabospot.org/userAuthenticate'
-        data = {'email': username, 'password': password}
+        data = {'email': self.username, 'password': self.password}
         headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
         # Later on check for update of Requests library so verify=False can be taken out--
         # --Need to figure out how to accept the StraboSpot SSL Certificate
@@ -315,8 +308,8 @@ class StraboSpot:
             self.iface.messageBar().pushMessage("Error:", "Bad Response: check internet \
                                            connection or make sure to enter email AND \
                                            password.", Qgis.Critical, 10)
-            username = None
-            password = None
+            self.username = None
+            self.password = None
             return
         # If not a Bad Response then check if the user's credentials are a valid account
         response = r.json()
@@ -329,8 +322,8 @@ class StraboSpot:
             self.dlg.stackedWidget.setCurrentIndex(1)
         elif valid == 'false':
             self.iface.messageBar().pushMessage("Error:", "Login Failed. Try again.", Qgis.Critical, 10)
-            username = None
-            password = None
+            self.username = None
+            self.password = None
 
     def deploydownloadGUI(self):
         # If the user wants to download a dataset, move to StraboChoose GUI
@@ -347,60 +340,56 @@ class StraboSpot:
 
         # GET the project list
         url = 'https://strabospot.org/db/myProjects'
-        r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+        r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
         statuscode = r.status_code
         QgsMessageLog.logMessage(('Get projects code: ' + str(statuscode)))
         response = r.json()
-        global projectids
-        projectids = []
+        self.projectids = []
         # Add project names to projectlistWidget
         for prj in response['projects']:
             if widget_name == "create_prj_widget":
                 self.dlg.create_prj_widget.addItem(prj['name'])
             elif widget_name == "projectlistWidget":
                 self.dlg.projectlistWidget.addItem(prj['name'])
-            projectids.append(prj['id'])
+            self.projectids.append(prj['id'])
 
     # Get the project id and then GET the datasets from that project
     # Dataset names are added to the datasetlistWidget
     def getprojectid(self, widget_name):
-        global projectname
         if widget_name == "projectlistWidget":
             if self.dlg.datasetlistWidget.count() > 0:
                 self.dlg.datasetlistWidget.clear()
             chosenid = self.dlg.projectlistWidget.currentRow()
-            projectname = self.dlg.projectlistWidget.currentItem().text()
+            self.projectname = self.dlg.projectlistWidget.currentItem().text()
         elif widget_name == "create_prj_widget":
             chosenid = self.dlg.create_prj_widget.currentRow()
-            projectname = self.dlg.create_prj_widget.currentItem().text()
+            self.projectname = self.dlg.create_prj_widget.currentItem().text()
 
-        QgsMessageLog.logMessage('Project Chosen :' + str(projectname) + ' Index of: ' + str(chosenid))
-        self.projectid = projectids[chosenid]
+        QgsMessageLog.logMessage('Project Chosen :' + str(self.projectname) + ' Index of: ' + str(chosenid))
+        self.projectid = self.projectids[chosenid]
 
         if widget_name == "projectlistWidget":
             # GET the datasets within a Strabo project
             url = 'https://strabospot.org/db/projectDatasets/' + str(self.projectid)
-            r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+            r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
             statuscode = r.status_code
             response = r.json()
-            global datasetids
-            datasetids = []
+            self.datasetids = []
             QgsMessageLog.logMessage('Get datasets code: ' + str(statuscode))
             # Add datasets to list widget
             for dataset in response['datasets']:
                 self.dlg.datasetlistWidget.addItem(dataset['name'])
-                datasetids.append(dataset['id'])
+                self.datasetids.append(dataset['id'])
 
     # Gets the StraboSpot unique identifer for the user-chosen dataset
     # This is needed later for the REST call for the full dataset GeoJSON
     def getdatasetid(self):
         chosenid = self.dlg.datasetlistWidget.currentRow()  # gets the index, corresponds to the datasetids list
-        global chosendatasets
         # Gather datasetname and datasetid into a tuple inside a list to be iterated in importSpots
         datasetname = self.dlg.datasetlistWidget.currentItem().text()
         #QgsMessageLog.logMessage('Dataset Chosen :' + str(datasetname) + ' Index of: ' + str(chosenid))
-        datasetid = datasetids[chosenid]
-        chosendatasets.append([datasetname, datasetid])
+        datasetid = self.datasetids[chosenid]
+        self.chosendatasets.append([datasetname, datasetid])
         #QgsMessageLog.logMessage('DatasetID: ' + str(datasetid))
 
     def downloadOptionsGUI(self):
@@ -425,7 +414,7 @@ class StraboSpot:
                                  QMessageBox.Ok)
             return
 
-        self.dlg.downloadProgresslabel.setText("Retrieving: " + projectname + "\r\n" + "from StraboSpot...")
+        self.dlg.downloadProgresslabel.setText("Retrieving: " + self.projectname + "\r\n" + "from StraboSpot...")
         self.dlg.downloadprogressBar.setMinimum(0)
         self.dlg.downloadprogressBar.setValue(0)
         self.dlg.downloadprogressBar.setTextVisible(True)
@@ -433,7 +422,7 @@ class StraboSpot:
         endMessage = ""
 
         # Set up the folder where files and images will be saved
-        prj_nospace = projectname.replace(' ', '')
+        prj_nospace = self.projectname.replace(' ', '')
         prj = prj_nospace.strip()
 
         projectfolder = prj + datetime.datetime.now().strftime("_%m_%d_%y")
@@ -469,7 +458,7 @@ class StraboSpot:
         # GET the project info from StraboSpot and save
         url = 'https://strabospot.org/db/project/' + str(self.projectid)
         QgsMessageLog.logMessage(url)
-        r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+        r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
         statuscode = r.status_code
         response = r.json()
         prj_json = response
@@ -487,10 +476,10 @@ class StraboSpot:
                         for spot in tag['spots']:
                             tag_spotids.append(spot)
 
-            endMessage = "-StraboSpot Project: " + projectname + " downloaded. \r\n"
+            endMessage = "-StraboSpot Project: " + self.projectname + " downloaded. \r\n"
             endMessage += "-Data saved in folder: " + datafolder + "\r\n"
             # If selected, create a SpatiaLite or PostGIS database and connect
-            if selDB == "SpatiaLite":
+            if self.selDB == "SpatiaLite":
                 self.dlg.downloadProgresslabel.setText("Creating SpatiaLite Database...")
                 SL_conn, SL_cur, db_exists = self.create_spatialite_db(datafolder, prj)
                 if db_exists is True:
@@ -504,7 +493,7 @@ class StraboSpot:
                 cur.execute(sqlstatement)
                 sqlstatement = None'''
 
-            elif selDB == "PostGIS":
+            elif self.selDB == "PostGIS":
                 # Add code to create a new PostGIS database
                 # Connect to PostGIS (need user and password- will have to pop up a window for input...)
                 # Create PostGIS db using this name:
@@ -523,16 +512,16 @@ class StraboSpot:
                 if db_exists is True:
                     endMessage += "-PostGIS Database, " + postDB + " created.\r\n"
 
-        progBarMax = len(chosendatasets)
+        progBarMax = len(self.chosendatasets)
         # Iterate per dataset tuple (dataset's name and id)
         QCoreApplication.instance().processEvents()
-        for chosen in chosendatasets:
+        for chosen in self.chosendatasets:
             datasetname = chosen[0]
             datasetid = chosen[1]
             # GET the datasetspots information from StraboSpot
             url = 'https://strabospot.org/db/datasetspotsarc/' + str(datasetid)
             QgsMessageLog.logMessage(url)
-            r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+            r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
             statuscode = r.status_code
             response = r.json()
 
@@ -540,7 +529,7 @@ class StraboSpot:
                 # ADD LATER-- FOR EACH DATASET CHOSEN CREATE A "DATASET" FOLDER AND DO THE FOLLOWING
                 # Save the datasetspots response to datafolder
                 # This whole version of the dataset will be called upon during Upload
-                self.dlg.downloadProgresslabel.setText("Downloading: " + datasetname + "\r\n" + "in StraboSpot Project: " + projectname)
+                self.dlg.downloadProgresslabel.setText("Downloading: " + datasetname + "\r\n" + "in StraboSpot Project: " + self.projectname)
                 QApplication.instance().processEvents()
 
                 rawjsonfile = os.path.join(datafolder, f"{datasetname}_{str(datasetid)}.json")
@@ -562,7 +551,7 @@ class StraboSpot:
                 found_geometry = False
                 for geotype in geometryList:
                     url = 'https://strabospot.org/db/datasetspotsarc/' + str(datasetid) + '/' + geotype
-                    r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+                    r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
                     statuscode = r.status_code
                     response = r.json()
                     if str(statuscode) == "200":  # If dataset is successfully transferred from StraboSpot
@@ -582,7 +571,7 @@ class StraboSpot:
                                     imageCount += 1
                         QgsMessageLog.logMessage('Images in dataset: ' + str(imageCount))  # Need to work on resizing
                         downloadedimagescount = 0
-                        if requestImages is True:
+                        if self.requestImages is True:
                             # self.dlg.progBarLabel.setText("Preparing to download " + datasetname + " and " + str(imageCount) + " images.") #Need to work on resizing
                             progBarMax += imageCount  # each downloaded image + (parsing GeoJSON, create layer, save layer(s) to db)
                             self.dlg.imageprogLabel.setText(
@@ -605,13 +594,18 @@ class StraboSpot:
                         newDatasetJson = []
                         for spot in fullDataset:
                             # Gather basic information on the Spot
-                            spotgeometry = spot['geometry']
-                            spotprop = spot['properties']
-                            spotID = spotprop['id']
-                            spotModTS = spotprop['modified_timestamp']
-                            spottime = spotprop['time']
-                            spotdate = spotprop['date']
-                            spotself = spotprop['self']
+                            try:                                
+                                spotgeometry = spot['geometry']
+                                spotprop = spot['properties']
+                                spotID = spotprop['id']
+                                spotModTS = spotprop['modified_timestamp']
+                                spottime = spotprop['time']
+                                spotdate = spotprop['date']
+                                spotself = spotprop['self']
+                            except KeyError as e:
+                                QMessageBox.warning(None, "Spot loading error",
+                                                    f"Unable to load spot: {e}")
+                                continue
                             newSpot = {}
                             newSpot['type'] = 'Feature'
                             newSpot['geometry'] = spotgeometry
@@ -728,23 +722,23 @@ class StraboSpot:
                                     imgID = img.get('id')
                                     # QgsMessageLog.logMessage(imgURL)
                                     # If the user requested images be downloaded, retrieve image from StraboSpot
-                                    if requestImages is True:
+                                    if self.requestImages is True:
                                         downloadedimagescount += 1
                                         self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
-                                        r = requests.get(imgURL, auth=HTTPBasicAuth(username, password), verify=False, stream=True)
+                                        r = requests.get(imgURL, auth=HTTPBasicAuth(self.username, self.password), verify=False, stream=True)
                                         statuscode = r.status_code
                                         #QgsMessageLog.logMessage(imgURL + " accessed with status code " + str(statuscode))
                                         # If the image was successfully retrieved from StraboSpot, save to file and geoTag
                                         if str(statuscode) == '200':
-                                            imgFile = imgFolder + "/" + str(imgID) + fileExte
+                                            imgFile = imgFolder + "/" + str(imgID) + self.fileExte
                                             with open(imgFile, 'wb') as f:
                                                 r.raw.decode_content = True
                                                 shutil.copyfileobj(r.raw, f)
-                                            if fileExte == ".jpeg":
+                                            if self.fileExte == ".jpeg":
                                                 self.geotag_photos(spotgeometry, imgFile, geotype)
                                         elif str(statuscode) == '404':
                                             warningMsg = "Image with id: " + str(imgID) + " not downloaded. Click 'Ok' to continue downloading."
-                                            result = QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
+                                            QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
 
                                         self.dlg.imageprogLabel.setText(
                                             "Image " + str(downloadedimagescount) + " of " + str(imageCount) + " successfully downloaded.")
@@ -781,16 +775,16 @@ class StraboSpot:
                             # Try Adding the project info to the metadata for upload...
                             # Add to databases
 
-                            if selDB == "SpatiaLite":
-                                self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
+                            if self.selDB == "SpatiaLite":
+                                self.dlg.progBarLabel.setText("Saving QGIS layer to " + self.selDB + " database")
                                 table_exists = self.create_spatialite_table(newlayer, newDatasetJson, geotype, SL_conn, SL_cur)
                                 if table_exists is True:
                                     endMessage += "-SpatiaLite table for " + newlayer.name() + " successfully created.\r\n"
                                 else:
                                     endMessage += "-Error creating SpatiaLite table, " + newlayer.name() + ", see Message Log for details."
 
-                            elif selDB == "PostGIS":
-                                self.dlg.progBarLabel.setText("Saving QGIS layer to " + selDB + " database")
+                            elif self.selDB == "PostGIS":
+                                self.dlg.progBarLabel.setText("Saving QGIS layer to " + self.selDB + " database")
                                 endMessage += "-GeoJSON for " + datasetname + " " + geotype + " saved.\r\n"
                                 resultBool = self.load_geojson_to_postgis(postDB, postGISUser, postGISPass, postGISport, modifiedFileName)
                                 if resultBool is True:
@@ -801,7 +795,7 @@ class StraboSpot:
                         self.dlg.downloadprogressBar.setValue(self.dlg.downloadprogressBar.value() + 1)
                         QApplication.instance().processEvents()
 
-                        if requestImages is True and (not imagesJson == []):
+                        if self.requestImages is True and (not imagesJson == []):
                             allImagesJson = {'type': 'FeatureCollection',
                                              'features': imagesJson}
                             fullimgJson = json.dumps(allImagesJson)
@@ -830,11 +824,11 @@ class StraboSpot:
 
             else:
                 errorMsg = "Dataset, " + datasetname + ", could not be downloaded from StraboSpot."
-                result = QMessageBox.critical(None, "Critical Error", errorMsg, QMessageBox.Ok)
-        if selDB == "SpatiaLite":
+                QMessageBox.critical(None, "Critical Error", errorMsg, QMessageBox.Ok)
+        if self.selDB == "SpatiaLite":
             SL_conn.commit()
             SL_conn.close()
-        # elif selDB == "PostGIS":
+        # elif self.selDB == "PostGIS":
 
         # Notify user of what was downloaded and created
         QMessageBox.information(None, "Download Complete", endMessage, QMessageBox.Ok)
@@ -843,26 +837,20 @@ class StraboSpot:
         self.backdialog()
 
     def setJpeg(self):
-        global fileExte
-        fileExte = ".jpeg"
+        self.fileExte = ".jpeg"
         QgsMessageLog.logMessage("JPEG Images")
-        global requestImages
-        requestImages = True
+        self.requestImages = True
 
     def setTiff(self):
-        global fileExte
-        fileExte = ".tiff"
+        self.fileExte = ".tiff"
         QgsMessageLog.logMessage("TIFF Images")
-        global requestImages
-        requestImages = True
+        self.requestImages = True
 
     def setPostGIS(self):
-        global selDB
-        selDB = "PostGIS"
+        self.selDB = "PostGIS"
 
     def setSpatiaLite(self):
-        global selDB
-        selDB = "SpatiaLite"
+        self.selDB = "SpatiaLite"
 
     def geotag_photos(self, spotgeo, imageName, geoType):
         """Based off guidance: from https://stackoverflow.com/questions/44636152/how-to-modify-exif-data-in-python
@@ -928,7 +916,7 @@ class StraboSpot:
             savedImg.save(imageName, "jpeg", exif=exif_bytes)
         else:
             warningMsg = "Image file: \n" + imageName + "\n could not be geotagged. Click 'Ok' to continue downloading."
-            result = QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
+            QMessageBox.warning(None, "Error", warningMsg, QMessageBox.Ok)
 
     def create_spatialite_db(self, folderpath, project_name):
         # Create/Connect to the database
@@ -1155,8 +1143,7 @@ class StraboSpot:
         
 
     def set_overwrite(self):
-        global sel_upload_method
-        sel_upload_method = "Overwrite"
+        self.sel_upload_method = "Overwrite"
         # Add label stuff
         self.dlg.upload_confirm_lbl.setText("Overwrite dataset(s) in StraboSpot")
         self.dlg.confirm_items_lbl.setText("Layers to upload...")
@@ -1164,8 +1151,7 @@ class StraboSpot:
         self.dlg.stackedWidget.setCurrentIndex(6)
 
     def set_create(self):
-        global sel_upload_method
-        sel_upload_method = "Create"
+        self.sel_upload_method = "Create"
         self.dlg.upload_confirm_lbl.setText("Create New StraboSpot Dataset(s)")
         self.dlg.confirm_items_lbl.setText("Select Project to upload layer(s)...")
         # Get all user's projects
@@ -1177,7 +1163,7 @@ class StraboSpot:
         # This is based on which option for upload the user chose:
         # Update Existing StraboSpot Dataset OR Create New StraboSpot Dataset
 
-        if sel_upload_method == "Overwrite":  # the user wants to overwrite an existing StraboSpot dataset
+        if self.sel_upload_method == "Overwrite":  # the user wants to overwrite an existing StraboSpot dataset
             
             self.dlg.create_prj_widget.clear()            
 
@@ -1253,9 +1239,8 @@ class StraboSpot:
             self.dlg.uploadStatus.setText(f"Creating GeoJSON for layer {lyr['name']}")
             QApplication.processEvents()
             
-            global temp_folder
             handle, tmpfile = mkstemp(suffix='.geojson')
-            temp_folder = handle
+            self.temp_folder = handle
             
             
             os.close(handle)
@@ -1294,11 +1279,11 @@ class StraboSpot:
         headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}        
                 
         # Overwrite Current Dataset
-        if sel_upload_method == "Overwrite":
+        if self.sel_upload_method == "Overwrite":
             # Go through the process to signal to StraboSpot to save a Version of the project
             # Get project json
             url = 'https://strabospot.org/db/project/' + str(self.projectid)
-            r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+            r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
             statuscode = r.status_code
             QgsMessageLog.logMessage(('Get projects code: ' + str(statuscode)))
             response = r.json()
@@ -1309,7 +1294,7 @@ class StraboSpot:
             # Post Modified Project JSON to StraboSpot
             url = 'https://strabospot.org/db/project/' + str(self.projectid)
             headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-            r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers, json=response, verify=False)
+            r = requests.post(url, auth=HTTPBasicAuth(self.username, self.password), headers=headers, json=response, verify=False)
             statuscode = r.status_code
             QgsMessageLog.logMessage(('Post project code: ' + str(statuscode)))
 
@@ -1323,7 +1308,7 @@ class StraboSpot:
                 datasetid = lyr['dataset']
                 # Get All Spots in the dataset the layer is associated with
                 url = 'https://strabospot.org/db/datasetspots/' + str(datasetid)
-                r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+                r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
                 statuscode = r.status_code
                 dataset_features = r.json()
                 if str(statuscode) != "200" or dataset_features is None:
@@ -1341,7 +1326,7 @@ class StraboSpot:
 
                 # Get the StraboSpot dataset JSON
                 url = 'https://strabospot.org/db/dataset/' + str(datasetid)
-                r = requests.get(url, auth=HTTPBasicAuth(username, password), verify=False)
+                r = requests.get(url, auth=HTTPBasicAuth(self.username, self.password), verify=False)
                 statuscode = r.status_code
                 response = r.json()
                 if str(statuscode) == "200":
@@ -1350,7 +1335,7 @@ class StraboSpot:
                 # Update the StraboSpot dataset JSON
                 url = 'https://strabospot.org/db/dataset/' + str(datasetid)
                 headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-                r = requests.post(url, auth=HTTPBasicAuth(username, password),
+                r = requests.post(url, auth=HTTPBasicAuth(self.username, self.password),
                                   headers=headers, json=response, verify=False)
                 statuscode = r.status_code
                 QgsMessageLog.logMessage(('Post project code: ' + str(statuscode)))
@@ -1372,12 +1357,12 @@ class StraboSpot:
                             dataset_spots.append(feature)
                 
                 spot_url = f"https://strabospot.org/db/datasetspots/{lyr['dataset']}"
-                r = requests.post(spot_url, auth=HTTPBasicAuth(username, password),
+                r = requests.post(spot_url, auth=HTTPBasicAuth(self.username, self.password),
                                   headers=headers, json=dataset_features, verify=False)
                 statuscode = r.status_code
                 QgsMessageLog.logMessage(('Post upload spots: ' + str(statuscode)+": " + str(r.text)))                
 
-        elif sel_upload_method == "Create":
+        elif self.sel_upload_method == "Create":
             QgsMessageLog.logMessage(f"Project ID: {self.projectid}")
             # Choose dataset
             # Choose project to add it to
@@ -1412,14 +1397,14 @@ class StraboSpot:
                 
                 url = 'https://strabospot.org/db/dataset/'
                 headers = {'Content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-                r = requests.post(url, auth=HTTPBasicAuth(username, password), headers=headers,
+                r = requests.post(url, auth=HTTPBasicAuth(self.username, self.password), headers=headers,
                                   json=new_dataset_json, verify=False)
                 statuscode = r.status_code
                 QgsMessageLog.logMessage(('Post create dataset: ' + str(statuscode)))
                 
                 # Add this dataset to the selected project
                 url = f'https://strabospot.org/db/projectDatasets/{self.projectid}'
-                r = requests.post(url, auth =HTTPBasicAuth(username, password), headers=headers,
+                r = requests.post(url, auth =HTTPBasicAuth(self.username, self.password), headers=headers,
                                   json = {'id': timeStamp,})
                 statuscode = r.status_code
                 QgsMessageLog.logMessage(('Post add dataset to project: ' + str(statuscode) +": " + str(r.text) ))
@@ -1455,7 +1440,7 @@ class StraboSpot:
                         feature['properties']['id'] = feature_id
                         
                     geo_json['features'] = features
-                    r = requests.post(spot_url, auth=HTTPBasicAuth(username, password),
+                    r = requests.post(spot_url, auth=HTTPBasicAuth(self.username, self.password),
                                       headers=headers, json=geo_json, verify=False)
                     statuscode = r.status_code
                     QgsMessageLog.logMessage(('Post upload spots: ' + str(statuscode)+": " + str(r.text)))
